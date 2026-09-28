@@ -1,0 +1,27 @@
+# Python
+.venv/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Environment & Secrets (NEVER COMMIT)
+.env
+.env.*
+!.env.example
+
+# Database
+data/*.db
+data/
+
+# Testing & Cache
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Node / Frontend (if any)
+node_modules/
+
+# OS specific
+.DS_Store
+Thumbs.db

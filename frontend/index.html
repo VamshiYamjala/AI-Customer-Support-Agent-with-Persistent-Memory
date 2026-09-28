@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>PayNest — AI Customer Support Agent with Persistent Memory</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div id="app">
+    <header class="app-header">
+      <div class="header-brand">
+        <h1>PayNest Support</h1>
+        <span class="badge">Persistent Memory Demo</span>
+      </div>
+      <div class="header-controls">
+        <label class="toggle-container" title="Toggle Hindsight memory injection for current replies">
+          <input type="checkbox" id="memory-toggle" checked>
+          <span class="slider"></span>
+          <span class="label-text">Memory ON</span>
+        </label>
+        <button id="new-session-btn" class="btn secondary">New Session</button>
+      </div>
+    </header>
+
+    <main class="main-container">
+      <!-- Left: Chat Panel -->
+      <section class="chat-panel">
+        <div class="chat-header">
+          <div class="customer-info" id="active-customer">
+            <span class="avatar">👤</span>
+            <div>
+              <strong id="customer-name">Priya (Returning Customer)</strong>
+              <small id="customer-email">p***@example.com</small>
+            </div>
+          </div>
+          <div id="memory-status-chip" class="status-chip ready">Memory: Ready</div>
+        </div>
+
+        <div class="messages-container" id="messages-container">
+          <div class="message system">
+            <p>Welcome to PayNest Customer Support. How can we help you today?</p>
+          </div>
+        </div>
+
+        <div class="input-area">
+          <textarea id="chat-input" placeholder="Type your message here..." rows="2"></textarea>
+          <button id="send-btn" class="btn primary">Send</button>
+        </div>
+      </section>
+
+      <!-- Right: Memory Inspector Panel -->
+      <aside class="inspector-panel">
+        <div class="inspector-tabs">
+          <button class="tab-btn active" data-tab="used">Memories Used</button>
+          <button class="tab-btn" data-tab="all">All Memories</button>
+        </div>
+
+        <div class="inspector-body" id="inspector-body">
+          <div class="inspector-empty">
+            <p>No memories recalled yet. Send a message to inspect persistent memory retrieval.</p>
+          </div>
+        </div>
+      </aside>
+    </main>
+  </div>
+</body>
+</html>
