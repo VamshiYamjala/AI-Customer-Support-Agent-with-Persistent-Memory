@@ -48,6 +48,7 @@ app.include_router(chat_router)
 # Mount Frontend static directory
 frontend_path = Path(__file__).resolve().parent.parent.parent / "frontend"
 if frontend_path.exists():
+    app.mount("/static", StaticFiles(directory=str(frontend_path)), name="static")
     app.mount("/", StaticFiles(directory=str(frontend_path), html=True), name="frontend")
 
 

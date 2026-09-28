@@ -42,12 +42,28 @@ class MemoryService:
         self.shared_kb_bank = shared_kb_bank or settings.HINDSIGHT_SHARED_KB_BANK
         self.timeout = timeout
 
-        self.client = Hindsight(
+        self._explicit_client: Optional[Any] = None
+        self._known_banks = set()
+
+    @property
+    def client(self) -> Hindsight:
+        """
+        Returns the active Hindsight SDK client.
+        If an explicit or mock client was set (e.g. during unit tests), returns it.
+        Otherwise creates a fresh client bound to the calling thread's event loop,
+        preventing 'RuntimeError: Event loop is closed' in multi-threaded AnyIO workers.
+        """
+        if self._explicit_client is not None:
+            return self._explicit_client
+        return Hindsight(
             base_url=self.base_url,
             api_key=self.api_key,
             timeout=self.timeout,
         )
-        self._known_banks = set()
+
+    @client.setter
+    def client(self, val: Any) -> None:
+        self._explicit_client = val
 
     def bank_id_for(self, customer_id: str) -> str:
         """Computes and validates bank ID for a given customer."""

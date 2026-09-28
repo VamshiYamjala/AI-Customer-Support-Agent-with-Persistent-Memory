@@ -291,3 +291,36 @@ def test_hindsight_outage_preserves_conversational_reply(auth_priya):
     assert data["memory_status"] == "unavailable"
     assert "Memory temporarily unavailable" in data["banner"]
     assert "assist you with general billing" in data["reply"]
+
+
+@pytest.mark.unit
+def test_memory_service_client_property_thread_safe():
+    """Verify MemoryService.client supports explicit mock overrides and dynamic thread-safe clients."""
+    import concurrent.futures
+
+    service = MemoryService(
+        base_url="https://api.hindsight.test",
+        api_key="test_api_key_12345",
+    )
+
+    # 1. Verify dynamic property returns an instance
+    c1 = service.client
+    assert c1 is not None
+
+    # 2. Verify setting an explicit mock overrides dynamic creation
+    mock_c = MagicMock()
+    service.client = mock_c
+    assert service.client is mock_c
+
+    # 3. Reset explicit client and verify multi-threaded access does not crash
+    service.client = None
+
+    def worker_access():
+        c = service.client
+        return c is not None
+
+    with concurrent.futures.ThreadPoolExecutor(max_workers=3) as executor:
+        futures = [executor.submit(worker_access) for _ in range(5)]
+        results = [f.result() for f in futures]
+    assert all(results)
+

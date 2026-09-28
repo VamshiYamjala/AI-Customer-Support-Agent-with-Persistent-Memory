@@ -76,8 +76,9 @@ def test_static_index_page_served():
 
 @pytest.mark.unit
 def test_static_assets_served():
-    """Verify static styles.css and app.js are served with 200 OK."""
+    """Verify static styles.css and app.js are served with 200 OK under / and /static."""
     client = TestClient(app)
+    # Root paths
     css_resp = client.get("/styles.css")
     assert css_resp.status_code == 200
     assert "text/css" in css_resp.headers.get("content-type", "")
@@ -85,4 +86,30 @@ def test_static_assets_served():
     js_resp = client.get("/app.js")
     assert js_resp.status_code == 200
     assert "javascript" in js_resp.headers.get("content-type", "")
+
+    # /static/ prefixed paths
+    static_css_resp = client.get("/static/styles.css")
+    assert static_css_resp.status_code == 200
+    assert "text/css" in static_css_resp.headers.get("content-type", "")
+
+    static_js_resp = client.get("/static/app.js")
+    assert static_js_resp.status_code == 200
+    assert "javascript" in static_js_resp.headers.get("content-type", "")
+
+
+@pytest.mark.unit
+def test_settings_sanitizes_credentials_and_urls():
+    """Verify that Settings strips whitespace, quotes, and Bearer prefixes from secrets and URLs."""
+    s = Settings(
+        HINDSIGHT_BASE_URL="  \"https://api.hindsight.test/\"  ",
+        HINDSIGHT_API_KEY="  \"Bearer hs_token_with_quotes_and_prefix\"  ",
+        GROQ_API_KEY=" 'gsk_token_with_single_quotes' ",
+        SESSION_SECRET="  session_secret_with_spaces  ",
+        _env_file=None,
+    )
+    assert s.HINDSIGHT_BASE_URL == "https://api.hindsight.test"
+    assert s.HINDSIGHT_API_KEY == "hs_token_with_quotes_and_prefix"
+    assert s.GROQ_API_KEY == "gsk_token_with_single_quotes"
+    assert s.SESSION_SECRET == "session_secret_with_spaces"
+
 

@@ -3,8 +3,11 @@ backend/app/api/health.py
 Health check endpoints for basic liveness and deep dependency verification.
 """
 
+import logging
 from fastapi import APIRouter, Response, status
 from backend.app.config import get_settings
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/api", tags=["health"])
 
@@ -44,8 +47,12 @@ def deep_health_check(response: Response):
             timeout=10.0,
         )
         client.get_version()
-        client.close()
-    except Exception:
+        try:
+            client.close()
+        except Exception:
+            pass
+    except Exception as exc:
+        logger.warning("Hindsight deep health check failed: %s", exc)
         hindsight_status = "down"
 
     # Check Groq LLM
@@ -53,7 +60,8 @@ def deep_health_check(response: Response):
         from groq import Groq
         groq_client = Groq(api_key=settings.GROQ_API_KEY, timeout=10.0)
         groq_client.models.list()
-    except Exception:
+    except Exception as exc:
+        logger.warning("Groq LLM deep health check failed: %s", exc)
         llm_status = "down"
 
     all_healthy = (hindsight_status == "ok") and (llm_status == "ok")

@@ -4,7 +4,7 @@ Configuration module using pydantic-settings.
 Loads environment variables from .env, validates required secrets, and masks credentials in string representation.
 """
 
-from typing import List, Optional
+from typing import Any, List, Optional
 from pydantic import Field, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
@@ -70,10 +70,22 @@ class Settings(BaseSettings):
         description="Comma-separated allowed CORS origins",
     )
 
-    @field_validator("HINDSIGHT_BASE_URL")
+    @field_validator("HINDSIGHT_BASE_URL", mode="before")
     @classmethod
-    def strip_trailing_slash(cls, v: str) -> str:
-        return v.rstrip("/")
+    def sanitize_base_url(cls, v: Any) -> Any:
+        if isinstance(v, str):
+            return v.strip().strip("'\"").rstrip("/")
+        return v
+
+    @field_validator("HINDSIGHT_API_KEY", "GROQ_API_KEY", "SESSION_SECRET", mode="before")
+    @classmethod
+    def sanitize_credentials(cls, v: Any) -> Any:
+        if isinstance(v, str):
+            cleaned = v.strip().strip("'\"").strip()
+            if cleaned.startswith("Bearer "):
+                cleaned = cleaned[7:].strip()
+            return cleaned
+        return v
 
     @property
     def allowed_origins_list(self) -> List[str]:
