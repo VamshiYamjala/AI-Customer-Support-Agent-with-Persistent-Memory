@@ -181,3 +181,32 @@ This document tracks every single action, decision, setup step, and milestone co
   - Added `tests/unit/test_agent.py` (9 tests) covering query builder with context, honesty claim replacement, citation validation, outcome recording (`resolved` / `not_resolved` / invalid 422), and customer history endpoint.
   - Full test suite: **39/39 tests passing in 15.78s**.
 
+---
+
+### Level 7: Persistent-Learning Demonstration & Comparison (Completed)
+- [x] End-to-End Demo Walkthrough Script (`scripts/demo_scenario.py`):
+  - Demonstrates Priya's Session 2 recurring card issue under Memory OFF (stateless discovery) vs. Memory ON (proactive recall of Visa 4242 and previous fix attempt).
+  - Demonstrates resolution outcome recording (`resolved` feedback saved to SQLite & Hindsight).
+  - Proves cross-customer isolation: Customer Arjun Patel queries about card errors and receives 0 recalled memories of Priya's Visa 4242.
+  - Supports `--mock` mode for fast, deterministic, zero-credit evaluation by judges.
+- [x] Quantitative & Qualitative Benchmark Suite (`scripts/eval_memory.py`):
+  - Standardized evaluation of 4 scenarios:
+    1. Returning customer recurring payment failure (`TC-01`).
+    2. Cross-session communication channel preference (`TC-02`).
+    3. Irrelevant / negative match query (`TC-03`).
+    4. System resilience under Hindsight outage fallback (`TC-04`).
+  - Measures re-explanation rates (100% reduction for returning customers), context recall precision, honesty adherence, and fallback resilience.
+  - Generates comprehensive markdown report: `docs/EVALUATION_REPORT.md`.
+- [x] Frontend Demonstration Enhancements (`frontend/index.html`, `frontend/app.js`, `frontend/styles.css`):
+  - Added Judge Demo Bar with quick action chips:
+    - `[⚡ Priya Session 2]`: Tests instant memory recall of past failure.
+    - `[⚖️ Compare ON vs OFF]`: Injects side-by-side comparison card displaying Memory OFF vs Memory ON responses, memory counts, re-explanation status, and judge insight.
+    - `[🔒 Arjun Isolation]`: Instant isolation proof without manual dropdown clicks.
+- [x] Comprehensive Test Suite (`tests/unit/test_comparison.py`):
+  - 4 unit tests verifying prompt divergence between Memory ON and OFF, cross-session memory retrieval in fresh sessions, cross-customer isolation with zero leakage, and empty memory handling on irrelevant queries.
+  - Full test suite: **43/43 tests passing in 8.47s**.
+- [x] Documentation Deliverables:
+  - Updated `README.md` with demonstration and benchmark execution instructions.
+  - Updated `docs/PROGRESS.md` and `docs/PROJECT_STEPS.md`.
+
+

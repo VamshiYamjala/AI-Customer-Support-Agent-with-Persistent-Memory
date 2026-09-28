@@ -64,7 +64,12 @@
   - [x] `frontend/app.js` & `styles.css`: Added resolution outcome buttons ("That worked" / "Still broken"), real-time memory-logged confirmation badges, and inspector history view
   - [x] Comprehensive test suite: `tests/unit/test_agent.py` (9 tests)
   - [x] Full test suite: **39/39 tests passing**
-- [ ] **Level 7: Persistent-Learning Demonstration & Comparison**
+- [x] **Level 7: Persistent-Learning Demonstration & Comparison**
+  - [x] `scripts/demo_scenario.py`: Interactive CLI walkthrough of Priya Session 2 (Memory OFF vs ON), outcome recording, and Arjun isolation
+  - [x] `scripts/eval_memory.py`: 4-scenario benchmark comparing Memory ON vs OFF; output `docs/EVALUATION_REPORT.md` (100% reduction in customer fatigue)
+  - [x] `frontend/`: Judge Demo Bar (`[⚡ Priya Session 2]`, `[⚖️ Compare ON vs OFF]`, `[🔒 Arjun Isolation]`) and side-by-side comparison card
+  - [x] Comprehensive test suite: `tests/unit/test_comparison.py` (4 tests)
+  - [x] Full test suite: **43/43 tests passing in 8.47s**
 - [ ] **Level 8: Frontend UI and Memory Inspector UX**
 - [ ] **Level 9: Comprehensive Testing & Reliability**
 - [ ] **Level 10: Deployment (Render Web Service)**

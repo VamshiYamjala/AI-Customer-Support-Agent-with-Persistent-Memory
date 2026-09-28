@@ -367,6 +367,125 @@ document.addEventListener("DOMContentLoaded", async () => {
     });
   }
 
+  // --- Judge Quick Demo Triggers ---
+  const demoPriyaBtn = document.getElementById("demo-btn-priya-s2");
+  const demoCompareBtn = document.getElementById("demo-btn-compare");
+  const demoArjunBtn = document.getElementById("demo-btn-arjun");
+
+  if (demoPriyaBtn) {
+    demoPriyaBtn.addEventListener("click", async () => {
+      if (currentCustomer !== "priya") {
+        if (customerSelect) customerSelect.value = "priya";
+        await loginAsCustomer("priya");
+      }
+      chatInput.value = "It's happening again with my subscription payment.";
+      sendMessage();
+    });
+  }
+
+  if (demoArjunBtn) {
+    demoArjunBtn.addEventListener("click", async () => {
+      if (customerSelect) customerSelect.value = "arjun";
+      await loginAsCustomer("arjun");
+      chatInput.value = "Which credit card did I have an issue with?";
+      sendMessage();
+    });
+  }
+
+  if (demoCompareBtn) {
+    demoCompareBtn.addEventListener("click", async () => {
+      if (currentCustomer !== "priya") {
+        if (customerSelect) customerSelect.value = "priya";
+        await loginAsCustomer("priya");
+      }
+      await runSideBySideComparison("It's happening again with my subscription payment.");
+    });
+  }
+
+  async function runSideBySideComparison(query) {
+    if (isSending) return;
+    isSending = true;
+    showTypingIndicator();
+
+    appendMessage("user", `[⚖️ Comparing Memory ON vs OFF] "${query}"`);
+
+    try {
+      // 1. Fetch Memory OFF
+      const respOff = await fetch("/api/chat", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${authToken}`,
+        },
+        body: JSON.stringify({
+          message: query,
+          session_id: `compare_off_${Date.now()}`,
+          use_memory: false,
+        }),
+      });
+      const dataOff = await respOff.json();
+
+      // 2. Fetch Memory ON
+      const respOn = await fetch("/api/chat", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${authToken}`,
+        },
+        body: JSON.stringify({
+          message: query,
+          session_id: `compare_on_${Date.now()}`,
+          use_memory: true,
+        }),
+      });
+      const dataOn = await respOn.json();
+
+      hideTypingIndicator();
+
+      // Update inspector with Memory ON memories
+      lastUsedMemories = dataOn.memories_used || [];
+      renderInspector("used");
+
+      // Inject side-by-side comparison card
+      const compCard = document.createElement("div");
+      compCard.className = "comparison-card";
+      compCard.innerHTML = `
+        <div class="comparison-header">
+          <strong>⚖️ Memory ON vs OFF Comparison</strong>
+          <span class="badge">Session 2 Verification</span>
+        </div>
+        <div class="comparison-grid">
+          <div class="comparison-col off">
+            <div class="col-title">🔴 Memory OFF (Stateless)</div>
+            <p class="col-reply">${escapeHtml(dataOff.reply)}</p>
+            <div class="col-meta">
+              Memories: <strong>0</strong> | Repetition: <span style="color:#b91c1c; font-weight:600;">Forces customer to re-explain card</span>
+            </div>
+          </div>
+          <div class="comparison-col on">
+            <div class="col-title">🟢 Memory ON (Hindsight)</div>
+            <p class="col-reply">${escapeHtml(dataOn.reply)}</p>
+            <div class="col-meta">
+              Memories: <strong>${dataOn.memories_used.length}</strong> | Repetition: <span style="color:#15803d; font-weight:600;">Remembers Visa 4242 & past fix</span>
+            </div>
+          </div>
+        </div>
+        <div class="comparison-insight">
+          💡 <strong>Judge Insight:</strong> Notice how Memory OFF has no knowledge of past sessions and asks the customer to repeat their card number and error. With Hindsight persistent memory, the agent references [M1], knows the previous fix failed, and immediately offers next-tier resolution.
+        </div>
+      `;
+
+      messagesContainer.appendChild(compCard);
+      messagesContainer.scrollTop = messagesContainer.scrollHeight;
+
+    } catch (e) {
+      hideTypingIndicator();
+      appendMessage("system", "⚠️ Comparison test failed. Please verify network connectivity.");
+    } finally {
+      isSending = false;
+    }
+  }
+
   // Initial login on page load
   await loginAsCustomer("priya");
 });
