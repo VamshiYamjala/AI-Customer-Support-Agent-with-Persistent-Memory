@@ -1,6 +1,9 @@
 # AI Customer Support Agent with Persistent Memory (PayNest Support Assistant)
 
-An intelligent, context-aware customer support assistant built for **HackwithHyderabad 3.0**, powered by **Hindsight by Vectorize** and **Groq LLMs**.
+> 🚀 **Live Deployment:** [https://ai-customer-support-agent-with.onrender.com/](https://ai-customer-support-agent-with.onrender.com/)  
+> 🌐 **Live Demo Status:** Active on Render | **Branch:** `Vinod-Updated-Version`
+
+An intelligent, context-aware customer support assistant built for **HackwithHyderabad 3.0**, powered by **Hindsight by Vectorize**, **RocketRide Server**, **HydraDB**, and **Groq LLMs**.
 
 ## Overview
 Traditional support bots suffer from session amnesia: customers must re-explain recurring payment errors, previously tried troubleshooting steps, and communication preferences each time they return. 
