@@ -1,6 +1,6 @@
 /**
  * frontend/app.js
- * Vanilla JavaScript controller for PayNest Support Chat UI with Hindsight Memory Inspector and Customer Authentication.
+ * Vanilla JavaScript controller for PayNest Support Chat UI with Hindsight Memory Inspector, Customer Authentication, and Resolution Outcomes.
  */
 
 document.addEventListener("DOMContentLoaded", async () => {
@@ -91,36 +91,79 @@ document.addEventListener("DOMContentLoaded", async () => {
       lastUsedMemories.forEach((mem, idx) => {
         const card = document.createElement("div");
         card.className = "memory-card";
-        const typeClass = mem.type === "world" ? "badge-world" : (mem.type === "observation" ? "badge-obs" : "badge-exp");
+        const isKB = mem.type === "world" || (mem.id && mem.id.startsWith("K")) || (mem.context && mem.context.includes("kb"));
+        const typeClass = isKB ? "badge-world" : (mem.type === "observation" ? "badge-obs" : "badge-exp");
+        const tagLabel = isKB ? (mem.id && mem.id.startsWith("K") ? `[${mem.id}]` : `[K${idx + 1}]`) : `[M${idx + 1}]`;
+        const typeLabel = isKB ? "KB / Policy" : (mem.type || "experience");
+
         card.innerHTML = `
           <div class="memory-card-header">
-            <span class="memory-tag">[M${idx + 1}]</span>
-            <span class="badge ${typeClass}">${mem.type || "memory"}</span>
+            <span class="memory-tag">${tagLabel}</span>
+            <span class="badge ${typeClass}">${typeLabel}</span>
           </div>
           <div class="memory-card-text">${escapeHtml(mem.text)}</div>
         `;
         inspectorBody.appendChild(card);
       });
     } else {
-      // Tab === 'all'
+      // Tab === 'all': Fetch customer longitudinal history from /api/customer/history
       inspectorBody.innerHTML = `
         <div class="inspector-empty">
-          <p>Displaying persistent memory bank <code>cs-${currentCustomer}</code>.</p>
+          <p>Loading history for bank <code>cs-${currentCustomer}</code>...</p>
         </div>
       `;
-      if (lastUsedMemories && lastUsedMemories.length > 0) {
-        lastUsedMemories.forEach((mem) => {
-          const card = document.createElement("div");
-          card.className = "memory-card";
-          card.innerHTML = `
-            <div class="memory-card-header">
-              <span class="badge badge-exp">${mem.type}</span>
+
+      fetch("/api/customer/history", {
+        headers: { "Authorization": `Bearer ${authToken}` },
+      })
+        .then((res) => res.json())
+        .then((history) => {
+          if (!history || history.length === 0) {
+            inspectorBody.innerHTML = `
+              <div class="inspector-empty">
+                <p>No past session history recorded yet for <code>cs-${currentCustomer}</code>.</p>
+              </div>
+            `;
+            return;
+          }
+
+          inspectorBody.innerHTML = `
+            <div style="font-size:0.8rem; font-weight:600; color:var(--text-muted); margin-bottom:0.75rem;">
+              Memory Bank: <code>cs-${currentCustomer}</code> (${history.length} session${history.length > 1 ? "s" : ""})
             </div>
-            <div class="memory-card-text">${escapeHtml(mem.text)}</div>
           `;
-          inspectorBody.appendChild(card);
+
+          history.forEach((item) => {
+            const card = document.createElement("div");
+            card.className = "memory-card";
+            const topic = item.ticket ? item.ticket.topic : (item.session.title || item.session.id);
+            const outcomeObj = item.outcomes && item.outcomes.length > 0 ? item.outcomes[0] : null;
+            const outcomeBadge = outcomeObj
+              ? `<div style="font-size:0.75rem; margin-top:0.35rem; color:${outcomeObj.outcome === 'resolved' ? '#15803d' : '#b91c1c'}; font-weight:600;">
+                   Outcome: ${outcomeObj.outcome === 'resolved' ? '✓ Resolved' : '✕ Still broken'}
+                 </div>`
+              : "";
+
+            card.innerHTML = `
+              <div class="memory-card-header">
+                <strong style="font-size:0.82rem; color:var(--text-main);">${escapeHtml(topic)}</strong>
+                <span class="badge badge-obs">${escapeHtml(item.session.id.slice(0, 12))}</span>
+              </div>
+              <div class="memory-card-text" style="font-size:0.8rem; color:var(--text-muted);">
+                ${item.messages ? item.messages.length : 0} interactions logged to SQLite & Hindsight.
+              </div>
+              ${outcomeBadge}
+            `;
+            inspectorBody.appendChild(card);
+          });
+        })
+        .catch(() => {
+          inspectorBody.innerHTML = `
+            <div class="inspector-empty">
+              <p>Persistent memory bank <code>cs-${currentCustomer}</code>.</p>
+            </div>
+          `;
         });
-      }
     }
   }
 
@@ -129,14 +172,61 @@ document.addEventListener("DOMContentLoaded", async () => {
     return str.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
   }
 
+  // Record customer resolution outcome
+  async function sendOutcome(outcome, containerEl) {
+    try {
+      const resp = await fetch("/api/outcome", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${authToken}`,
+        },
+        body: JSON.stringify({
+          session_id: currentSessionId,
+          outcome: outcome,
+          note: outcome === "resolved" ? "Confirmed working by customer." : "Customer indicated issue is still broken.",
+        }),
+      });
+
+      if (resp.ok) {
+        const isResolved = outcome === "resolved";
+        containerEl.innerHTML = `
+          <span class="outcome-badge ${isResolved ? 'resolved' : 'broken'}">
+            ${isResolved ? '✓ Outcome: Resolved (Saved to Memory)' : '⚠ Outcome: Still investigating (Logged to Memory)'}
+          </span>
+        `;
+      }
+    } catch (e) {
+      console.error("Failed to record outcome:", e);
+    }
+  }
+
   // Append a message to the chat view
-  function appendMessage(role, text) {
+  function appendMessage(role, text, allowOutcome = false) {
     const msgDiv = document.createElement("div");
     msgDiv.className = `message ${role}`;
 
     const textP = document.createElement("p");
     textP.textContent = text;
     msgDiv.appendChild(textP);
+
+    if (role === "assistant" && allowOutcome) {
+      const outcomeDiv = document.createElement("div");
+      outcomeDiv.className = "outcome-actions";
+      outcomeDiv.innerHTML = `
+        <span class="outcome-prompt">Did this resolve your issue?</span>
+        <button class="btn-outcome resolved" title="Confirm fix worked">✓ That worked</button>
+        <button class="btn-outcome broken" title="Fix did not work">✕ Still broken</button>
+      `;
+
+      const resolvedBtn = outcomeDiv.querySelector(".resolved");
+      const brokenBtn = outcomeDiv.querySelector(".broken");
+
+      resolvedBtn.addEventListener("click", () => sendOutcome("resolved", outcomeDiv));
+      brokenBtn.addEventListener("click", () => sendOutcome("not_resolved", outcomeDiv));
+
+      msgDiv.appendChild(outcomeDiv);
+    }
 
     messagesContainer.appendChild(msgDiv);
     messagesContainer.scrollTop = messagesContainer.scrollHeight;
@@ -208,7 +298,7 @@ document.addEventListener("DOMContentLoaded", async () => {
       }
 
       const data = await response.json();
-      appendMessage("assistant", data.reply);
+      appendMessage("assistant", data.reply, true);
 
       if (data.banner) {
         appendMessage("system", `ℹ️ ${data.banner}`);

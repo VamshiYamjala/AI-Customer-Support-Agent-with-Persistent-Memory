@@ -151,3 +151,33 @@ This document tracks every single action, decision, setup step, and milestone co
   - `tests/unit/test_isolation.py` (3 tests): SQLite cross-customer access rejected with 404, request body identity spoofing ignored, MemoryService bank and tag isolation.
   - Full test suite: **30/30 tests passing in 5.46s**.
 - [x] Verified live HTTP execution: customer switching, token generation, session creation, chat, and cross-customer isolation enforcement.
+
+---
+
+### Level 6: Core Support Agent, Honesty Guardrails, Demo Seeding, and Outcomes (Completed)
+- [x] Implemented `backend/app/services/agent.py`:
+  - `AgentService.process_turn(...)`: Full orchestration pipeline integrating FastAPI bearer customer identity, SQLite session/ticket persistence, context-aware semantic query generation, Hindsight customer and KB recall, Groq LLM completion, post-check honesty guardrails, and asynchronous background retention.
+  - `build_recall_query(...)`: Combines current message with recent conversation context, respecting a strict 35-word limit for optimal Hindsight search precision.
+  - `post_check_honesty(...)`:
+    - Regex detection of unauthorized action claims (e.g., "I have refunded", "I fixed your account", "I cancelled your subscription") and drops safe honest boundaries directing customer to human billing teams.
+    - Citation validation: Strips hallucinated citation tags (e.g. `[M99]`, `[K5]`) while preserving verified recalled references (`[M1]`, `[K1]`).
+- [x] Implemented Ticket & Outcome Storage (`backend/app/db/store.py`):
+  - Added methods `create_ticket`, `get_ticket`, `get_latest_ticket_for_session`, `record_outcome`, `get_outcomes_for_ticket`, and `get_customer_history`.
+  - Fully idempotent operations using `INSERT OR REPLACE INTO sessions` and `INSERT OR IGNORE INTO messages`.
+- [x] Extended API Endpoints (`backend/app/api/chat.py` & `backend/app/models/schemas.py`):
+  - Refactored `POST /api/chat` to delegate orchestration directly to `AgentService`.
+  - Added `POST /api/outcome`: Accepts `{session_id, ticket_id, outcome, note}` with validation (`resolved` | `not_resolved`), persists outcome to SQLite, and retains confirmation to Hindsight memory.
+  - Added `GET /api/customer/history`: Returns full longitudinal sessions, tickets, messages, and outcomes scoped strictly to authenticated customer.
+- [x] Demo Seeding Script (`scripts/seed_demo.py`):
+  - Populates shared `support-kb` Hindsight bank with 5 verified PayNest support policies (`kb-k1-card-update`, `kb-k2-sms-2fa`, `kb-k3-refund-policy`, `kb-k4-plan-changes`, `kb-k5-duplicate-charges`).
+  - Populates Priya's isolated Hindsight memory bank `cs-priya` with her historical Visa 4242 failure (`sess_priya_01-t1`).
+  - Populates SQLite store with realistic demo sessions, tickets, and outcomes for Priya Sharma, Arjun Patel, and Meera Rao.
+  - Supports `--local-only` mode for offline / zero-credit testing as well as full Hindsight Cloud live seeding.
+- [x] Frontend Interaction Updates (`frontend/app.js` & `frontend/styles.css`):
+  - Added resolution outcome feedback buttons ("✓ That worked" / "✕ Still broken") under assistant responses that trigger `POST /api/outcome` and render real-time memory-logged confirmation badges.
+  - Inspector panel distinguishes between `[K#]` KB / Company Policy badges (`badge-world`) and `[M#]` Customer Experience badges (`badge-exp`).
+  - Inspector "All Memories" tab loads full persistent session history, topics, and recorded outcomes via `GET /api/customer/history`.
+- [x] Comprehensive Test Suite:
+  - Added `tests/unit/test_agent.py` (9 tests) covering query builder with context, honesty claim replacement, citation validation, outcome recording (`resolved` / `not_resolved` / invalid 422), and customer history endpoint.
+  - Full test suite: **39/39 tests passing in 15.78s**.
+

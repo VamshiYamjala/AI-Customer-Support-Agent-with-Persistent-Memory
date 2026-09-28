@@ -81,3 +81,26 @@ class ErrorDetail(BaseModel):
 
 class ErrorResponse(BaseModel):
     error: ErrorDetail
+
+
+class OutcomeRequest(BaseModel):
+    ticket_id: Optional[str] = Field(default=None, description="Ticket ID, if known.")
+    session_id: Optional[str] = Field(default=None, description="Session ID to attach outcome to.")
+    outcome: str = Field(..., description="Outcome status: 'resolved' or 'not_resolved'.")
+    note: Optional[str] = Field(default="", description="Optional feedback note from customer.")
+
+    @field_validator("outcome")
+    @classmethod
+    def validate_outcome(cls, v: str) -> str:
+        cleaned = v.strip().lower()
+        if cleaned not in ("resolved", "not_resolved"):
+            raise ValueError("Outcome must be either 'resolved' or 'not_resolved'.")
+        return cleaned
+
+
+class OutcomeResponse(BaseModel):
+    status: str
+    ticket_id: str
+    outcome: str
+    message: str
+

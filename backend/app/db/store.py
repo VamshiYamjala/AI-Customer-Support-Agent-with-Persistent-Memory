@@ -7,6 +7,7 @@ from datetime import datetime, timezone
 import os
 from pathlib import Path
 import sqlite3
+import uuid
 from typing import Any, Dict, List, Optional
 from backend.app.config import get_settings
 
@@ -139,7 +140,7 @@ class DatabaseStore:
         now = datetime.now(timezone.utc).isoformat()
         cur.execute(
             """
-            INSERT INTO sessions (id, customer_id, created_at, title)
+            INSERT OR REPLACE INTO sessions (id, customer_id, created_at, title)
             VALUES (?, ?, ?, ?)
             """,
             (session_id, customer_id, now, title or f"Session {session_id[:8]}"),
@@ -185,7 +186,7 @@ class DatabaseStore:
         now = datetime.now(timezone.utc).isoformat()
         cur.execute(
             """
-            INSERT INTO messages (session_id, customer_id, role, content, created_at, client_message_id, memory_saved_status)
+            INSERT OR IGNORE INTO messages (session_id, customer_id, role, content, created_at, client_message_id, memory_saved_status)
             VALUES (?, ?, ?, ?, ?, ?, ?)
             """,
             (session_id, customer_id, role, content, now, client_message_id, memory_saved_status),
@@ -207,6 +208,103 @@ class DatabaseStore:
         rows = cur.fetchall()
         conn.close()
         return [dict(r) for r in rows]
+
+    def create_ticket(
+        self, customer_id: str, session_id: str, topic: str, status: str = "open", ticket_id: Optional[str] = None
+    ) -> Dict[str, Any]:
+        conn = get_db_connection()
+        cur = conn.cursor()
+        tkt_id = ticket_id or f"tkt_{uuid.uuid4().hex[:8]}"
+        now = datetime.now(timezone.utc).isoformat()
+        cur.execute(
+            """
+            INSERT OR REPLACE INTO tickets (id, customer_id, session_id, topic, status, opened_at)
+            VALUES (?, ?, ?, ?, ?, ?)
+            """,
+            (tkt_id, customer_id, session_id, topic, status, now),
+        )
+        conn.commit()
+        conn.close()
+        return {
+            "id": tkt_id,
+            "customer_id": customer_id,
+            "session_id": session_id,
+            "topic": topic,
+            "status": status,
+            "opened_at": now,
+        }
+
+    def get_ticket(self, ticket_id: str, customer_id: str) -> Optional[Dict[str, Any]]:
+        conn = get_db_connection()
+        cur = conn.cursor()
+        cur.execute(
+            "SELECT * FROM tickets WHERE id = ? AND customer_id = ?",
+            (ticket_id, customer_id),
+        )
+        row = cur.fetchone()
+        conn.close()
+        return dict(row) if row else None
+
+    def get_latest_ticket_for_session(self, session_id: str, customer_id: str) -> Optional[Dict[str, Any]]:
+        conn = get_db_connection()
+        cur = conn.cursor()
+        cur.execute(
+            "SELECT * FROM tickets WHERE session_id = ? AND customer_id = ? ORDER BY opened_at DESC LIMIT 1",
+            (session_id, customer_id),
+        )
+        row = cur.fetchone()
+        conn.close()
+        return dict(row) if row else None
+
+    def record_outcome(
+        self, ticket_id: str, outcome: str, note: Optional[str] = None
+    ) -> Dict[str, Any]:
+        conn = get_db_connection()
+        cur = conn.cursor()
+        now = datetime.now(timezone.utc).isoformat()
+        cur.execute(
+            """
+            INSERT INTO outcomes (ticket_id, outcome, note, created_at)
+            VALUES (?, ?, ?, ?)
+            """,
+            (ticket_id, outcome, note or "", now),
+        )
+        new_status = "resolved" if outcome == "resolved" else "investigating"
+        closed_at = now if outcome == "resolved" else None
+        cur.execute(
+            """
+            UPDATE tickets SET status = ?, closed_at = ? WHERE id = ?
+            """,
+            (new_status, closed_at, ticket_id),
+        )
+        conn.commit()
+        conn.close()
+        return {"ticket_id": ticket_id, "outcome": outcome, "note": note, "created_at": now}
+
+    def get_outcomes_for_ticket(self, ticket_id: str) -> List[Dict[str, Any]]:
+        conn = get_db_connection()
+        cur = conn.cursor()
+        cur.execute("SELECT * FROM outcomes WHERE ticket_id = ? ORDER BY id ASC", (ticket_id,))
+        rows = cur.fetchall()
+        conn.close()
+        return [dict(r) for r in rows]
+
+    def get_customer_history(self, customer_id: str) -> List[Dict[str, Any]]:
+        """Returns customer's sessions with their messages, tickets, and outcomes."""
+        sessions = self.list_sessions(customer_id)
+        result = []
+        for s in sessions:
+            sid = s["id"]
+            msgs = self.get_session_messages(sid, customer_id)
+            ticket = self.get_latest_ticket_for_session(sid, customer_id)
+            outcomes = self.get_outcomes_for_ticket(ticket["id"]) if ticket else []
+            result.append({
+                "session": s,
+                "messages": msgs,
+                "ticket": ticket,
+                "outcomes": outcomes,
+            })
+        return result
 
 
 _store_instance: Optional[DatabaseStore] = None
