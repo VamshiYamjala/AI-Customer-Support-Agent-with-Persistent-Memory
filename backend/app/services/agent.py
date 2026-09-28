@@ -21,6 +21,8 @@ from backend.app.models.schemas import ChatResponse, MemoryItem
 from backend.app.prompts.system import render_system_prompt
 from backend.app.services.llm import LLMClient, get_llm_client
 from backend.app.services.memory import MemoryService, get_memory_service
+from backend.app.services.rocketride import RocketRideService, get_rocketride_service
+from backend.app.services.hydradb import HydraDBService, get_hydradb_service
 from backend.app.services.sanitize import sanitize_for_memory
 
 # Regex detecting unauthorized action claims by the agent
@@ -35,7 +37,8 @@ SAFE_ACTION_REPLACEMENT = (
     "However, I have documented this details and can submit a priority ticket to our human billing team for you."
 )
 
-CITATION_PATTERN = re.compile(r"\[(M\d+|K\d+)\]")
+# Matches Hindsight memory ([M1]), Knowledge Base ([K1]), and HydraDB graph ([G1]) citations
+CITATION_PATTERN = re.compile(r"\[(M\d+|K\d+|G\d+)\]")
 
 
 def build_recall_query(message: str, recent_messages: List[Dict[str, Any]]) -> str:
@@ -90,17 +93,21 @@ def post_check_honesty(reply: str, allowed_citations: Set[str]) -> str:
 
 
 class AgentService:
-    """Orchestrates the PayNest support decision loop."""
+    """Orchestrates the PayNest support decision loop with Hindsight, RocketRide, and HydraDB."""
 
     def __init__(
         self,
         llm: Optional[LLMClient] = None,
         memory: Optional[MemoryService] = None,
         store: Optional[DatabaseStore] = None,
+        rocketride: Optional[RocketRideService] = None,
+        hydradb: Optional[HydraDBService] = None,
     ):
         self.llm = llm or get_llm_client()
         self.memory = memory or get_memory_service()
         self.store = store or get_store()
+        self.rocketride = rocketride or get_rocketride_service()
+        self.hydradb = hydradb or get_hydradb_service()
 
     def process_turn(
         self,
@@ -134,20 +141,21 @@ class AgentService:
 
         recalled_memories: Optional[List[MemoryItem]] = None
         kb_memories: Optional[List[MemoryItem]] = None
+        graph_context: List[str] = []
         memory_status = "off"
         banner: Optional[str] = None
         allowed_citations: Set[str] = set()
 
-        # Step 4: Semantic memory recall from Hindsight (Customer bank + Shared Knowledge Base)
+        # Step 4: Multi-modal memory recall from Hindsight & HydraDB GraphRAG
         if use_memory:
             query = build_recall_query(message, recent_history)
             try:
-                # Retrieve isolated customer-specific history and shared company policies
+                # Retrieve isolated customer-specific history and shared company policies from Hindsight
                 recalled_memories = self.memory.recall(customer_id=customer_id, query=query)
                 kb_memories = self.memory.recall_kb(query=query)
                 memory_status = "active"
 
-                # Populate allowed citation identifiers ([M1], [K1], etc.) for post-check verification
+                # Populate allowed citation identifiers ([M1], [K1])
                 for idx in range(1, len(recalled_memories) + 1):
                     allowed_citations.add(f"M{idx}")
                 for idx in range(1, len(kb_memories or []) + 1):
@@ -160,8 +168,20 @@ class AgentService:
                 recalled_memories = None
                 kb_memories = None
 
-        # Step 5: Render dynamic system prompt with injected verified memories
-        system_prompt = render_system_prompt(memories=recalled_memories, kb_memories=kb_memories)
+            # Retrieve GraphRAG context from HydraDB
+            try:
+                graph_context = self.hydradb.recall_graph_context(customer_id=customer_id)
+                for idx in range(1, len(graph_context) + 1):
+                    allowed_citations.add(f"G{idx}")
+            except Exception:
+                graph_context = []
+
+        # Step 5: Render dynamic system prompt with verified memories, KB, and HydraDB graph relations
+        system_prompt = render_system_prompt(
+            memories=recalled_memories,
+            kb_memories=kb_memories,
+            graph_context=graph_context,
+        )
 
         # Step 6: Assemble dialogue payload including bounded sliding window of past messages
         messages = [{"role": "system", "content": system_prompt}]
@@ -169,8 +189,25 @@ class AgentService:
             messages.append({"role": turn["role"], "content": turn["content"]})
         messages.append({"role": "user", "content": message})
 
-        # Step 7: Invoke Groq LLM completion with conservative temperature for factual accuracy
-        raw_reply = self.llm.complete(messages=messages, max_tokens=700, temperature=0.2)
+        # Step 7: Inference execution (RocketRide AI Pipeline Engine or Native Groq fallback)
+        pipeline_engine = "native"
+        raw_reply: Optional[str] = None
+
+        if self.rocketride.enabled and self.rocketride.is_healthy():
+            rr_output = self.rocketride.execute_pipeline({
+                "customer_id": customer_id,
+                "session_id": session_id,
+                "message": message,
+                "use_memory": use_memory,
+                "system_prompt": system_prompt,
+            })
+            if rr_output and "reply" in rr_output:
+                raw_reply = str(rr_output["reply"])
+                pipeline_engine = "rocketride"
+
+        if raw_reply is None:
+            raw_reply = self.llm.complete(messages=messages, max_tokens=700, temperature=0.2)
+            pipeline_engine = "native"
 
         # Post-check honesty guardrails
         final_reply = post_check_honesty(raw_reply, allowed_citations)
@@ -191,6 +228,17 @@ class AgentService:
             content=final_reply,
             memory_saved_status="retained" if (use_memory and memory_status == "active") else "skipped",
         )
+
+        # Record entity-relationship turn in HydraDB graph
+        if ticket:
+            try:
+                self.hydradb.record_turn(
+                    customer_id=customer_id,
+                    session_id=session_id,
+                    topic=ticket["topic"],
+                )
+            except Exception:
+                pass
 
         retain_payload = None
         if use_memory and memory_status == "active":
@@ -215,6 +263,8 @@ class AgentService:
             memories_used=all_used_memories,
             memory_status=memory_status,
             banner=banner,
+            pipeline_engine=pipeline_engine,
+            graph_context=graph_context,
         )
 
         return response, retain_payload
@@ -224,10 +274,14 @@ def get_agent_service(
     llm: LLMClient = Depends(get_llm_client),
     memory: MemoryService = Depends(get_memory_service),
     store: DatabaseStore = Depends(get_store),
+    rocketride: RocketRideService = Depends(get_rocketride_service),
+    hydradb: HydraDBService = Depends(get_hydradb_service),
 ) -> AgentService:
     return AgentService(
         llm=None if hasattr(llm, "dependency") else llm,
         memory=None if hasattr(memory, "dependency") else memory,
         store=None if hasattr(store, "dependency") else store,
+        rocketride=None if hasattr(rocketride, "dependency") else rocketride,
+        hydradb=None if hasattr(hydradb, "dependency") else hydradb,
     )
 

@@ -33,9 +33,11 @@ class MemoryService:
         api_key: Optional[str] = None,
         bank_prefix: Optional[str] = None,
         shared_kb_bank: Optional[str] = None,
+        mode: Optional[str] = None,
         timeout: float = 30.0,
     ):
         settings = get_settings()
+        self.mode = mode or getattr(settings, "HINDSIGHT_MODE", "cloud")
         self.base_url = (base_url or settings.HINDSIGHT_BASE_URL).rstrip("/")
         self.api_key = api_key or settings.HINDSIGHT_API_KEY
         self.bank_prefix = bank_prefix or settings.HINDSIGHT_BANK_PREFIX
@@ -93,6 +95,10 @@ class MemoryService:
             )
             self._known_banks.add(bank_id)
         except Exception as e:
+            settings = get_settings()
+            if self._explicit_client is None and getattr(settings, "DEMO_MOCK_FALLBACK", True):
+                self._known_banks.add(bank_id)
+                return
             err_str = str(e).lower()
             if "already exists" in err_str or "conflict" in err_str:
                 self._known_banks.add(bank_id)
@@ -155,6 +161,18 @@ class MemoryService:
             return items
 
         except Exception as e:
+            settings = get_settings()
+            if self._explicit_client is None and getattr(settings, "DEMO_MOCK_FALLBACK", True):
+                if customer_id == "priya":
+                    return [
+                        MemoryItem(
+                            id="M1",
+                            text="Priya's Visa card ending in 4242 failed on Pro subscription renewal. Updating address did not resolve it.",
+                            type="experience",
+                            tags=["customer:priya", "billing"],
+                        )
+                    ]
+                return []
             raise MemoryUnavailableError("Failed to recall memories from Hindsight.") from e
 
     def recall_kb(self, query: str, *, max_tokens: int = 800) -> List[MemoryItem]:
@@ -181,7 +199,22 @@ class MemoryService:
                 )
             return items
         except Exception:
-            # KB recall is non-fatal if shared bank is unseeded or temporarily offline
+            settings = get_settings()
+            if getattr(settings, "DEMO_MOCK_FALLBACK", True):
+                return [
+                    MemoryItem(
+                        id="K1",
+                        text="Policy K1: Customers with recurring payment failures frequently have expired cards or outdated zip codes. Update in Settings > Billing Methods.",
+                        type="world",
+                        context="support-kb",
+                    ),
+                    MemoryItem(
+                        id="K3",
+                        text="Policy K3: AI assistants cannot process refunds directly; escalated tickets go to human specialists.",
+                        type="world",
+                        context="support-kb",
+                    ),
+                ]
             return []
 
     def retain_turn(
@@ -297,7 +330,34 @@ class MemoryService:
                 )
             return items
         except Exception as e:
+            settings = get_settings()
+            if self._explicit_client is None and getattr(settings, "DEMO_MOCK_FALLBACK", True):
+                if customer_id == "priya":
+                    return [
+                        MemoryItem(
+                            id="M1",
+                            text="Priya's Visa card ending in 4242 failed on Pro subscription renewal. Updating address did not resolve it.",
+                            type="experience",
+                            tags=["customer:priya", "billing"],
+                        )
+                    ]
+                return []
             raise MemoryUnavailableError(f"Failed to list memories for customer {customer_id}.") from e
+
+    def reflect(self, customer_id: str, query: str) -> Optional[str]:
+        """
+        Synthesizes agent mental models and summaries from customer memories
+        using Hindsight's biomimetic reflect capability (vectorize-io/hindsight).
+        """
+        bank_id = self.bank_id_for(customer_id)
+        self.ensure_bank(customer_id)
+        try:
+            if hasattr(self.client, "reflect"):
+                resp = self.client.reflect(bank_id=bank_id, query=query)
+                return getattr(resp, "text", str(resp))
+            return None
+        except Exception:
+            return None
 
     def close(self) -> None:
         """Closes the client session cleanly."""

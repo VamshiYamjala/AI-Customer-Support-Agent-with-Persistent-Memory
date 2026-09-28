@@ -1,0 +1,86 @@
+{
+  "name": "paynest_support_agent_pipeline",
+  "version": "1.0.0",
+  "description": "High-performance AI Customer Support pipeline with Hindsight memory recall, HydraDB GraphRAG, PII sanitization, and Groq LLM inference for RocketRide Server (https://github.com/rocketride-org/rocketride-server)",
+  "nodes": [
+    {
+      "id": "input_turn",
+      "type": "input",
+      "config": {
+        "fields": [
+          "customer_id",
+          "session_id",
+          "message",
+          "use_memory"
+        ]
+      }
+    },
+    {
+      "id": "sanitize_pii",
+      "type": "pii_masking",
+      "config": {
+        "mask_credit_cards": true,
+        "mask_cvv": true,
+        "mask_passwords": true
+      }
+    },
+    {
+      "id": "hindsight_recall",
+      "type": "vector_memory",
+      "config": {
+        "provider": "hindsight",
+        "engine": "vectorize-io/hindsight",
+        "budget": "mid",
+        "max_tokens": 1200
+      }
+    },
+    {
+      "id": "hydradb_graph_recall",
+      "type": "graph_db",
+      "config": {
+        "provider": "hydradb",
+        "engine": "hydra-db/hydradb",
+        "query": "MATCH (c:Customer {id: $customer_id})-[:OPENED_SESSION]->(s:Session)-[:CONCERNS]->(t:Topic) RETURN s, t"
+      }
+    },
+    {
+      "id": "groq_llm",
+      "type": "llm",
+      "config": {
+        "provider": "groq",
+        "model": "openai/gpt-oss-20b",
+        "temperature": 0.2,
+        "max_tokens": 700
+      }
+    },
+    {
+      "id": "safety_guardrail",
+      "type": "guardrail",
+      "config": {
+        "strip_unauthorized_actions": true,
+        "validate_citations": true
+      }
+    },
+    {
+      "id": "output_turn",
+      "type": "output",
+      "config": {
+        "fields": [
+          "reply",
+          "recalled_memories",
+          "graph_insights",
+          "citations"
+        ]
+      }
+    }
+  ],
+  "edges": [
+    { "from": "input_turn", "to": "sanitize_pii" },
+    { "from": "sanitize_pii", "to": "hindsight_recall" },
+    { "from": "sanitize_pii", "to": "hydradb_graph_recall" },
+    { "from": "hindsight_recall", "to": "groq_llm" },
+    { "from": "hydradb_graph_recall", "to": "groq_llm" },
+    { "from": "groq_llm", "to": "safety_guardrail" },
+    { "from": "safety_guardrail", "to": "output_turn" }
+  ]
+}

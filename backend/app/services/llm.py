@@ -21,6 +21,31 @@ class LLMClient:
         self.timeout = timeout
         self.client = Groq(api_key=self.api_key, timeout=self.timeout)
 
+    def _mock_response(self, messages: List[Dict[str, str]]) -> str:
+        sys_msg = messages[0]["content"] if messages else ""
+        user_msg = messages[-1]["content"] if messages else ""
+        user_lower = user_msg.lower()
+
+        if "CUSTOMER HISTORY" in sys_msg and "Visa" in sys_msg:
+            return (
+                "Hello Priya! I see you are having trouble with your payment again. "
+                "Recalling our previous session [M1], your Visa ending in 4242 failed renewal, and updating the billing details "
+                "did not resolve the issue. Since that fix didn't work, I recommend trying an alternate credit card or PayPal [K1]. "
+                "Would you like me to submit a priority ticket to our billing specialists [K3]?"
+            )
+        elif "Arjun" in sys_msg or "arjun" in user_lower:
+            return "Hello Arjun! I checked your account and find no record of any card errors or payment failures."
+        elif "meera" in user_lower or "team pricing" in user_lower or "seat" in user_lower:
+            return "Hello Meera! Additional seats are $12 per user per month, prorated immediately [K4]."
+        elif any(w in user_lower for w in ("hi", "hello", "hey", "greetings")):
+            return "Hello! Welcome to PayNest Support. How can I assist you today with your account, billing, or subscription?"
+        elif any(w in user_lower for w in ("card", "payment", "fail", "subscription", "charge")):
+            return (
+                "I would be glad to help resolve your subscription payment issue. "
+                "Could you please verify your billing zip code in Settings > Billing Methods [K1], or would you like to try another payment method?"
+            )
+        return f"Thank you for reaching out to PayNest Support. Regarding '{user_msg}', I am here to help. How would you like to proceed?"
+
     def complete(
         self,
         messages: List[Dict[str, str]],
@@ -32,6 +57,10 @@ class LLMClient:
         Retries once on 429 (RateLimitError) or 5xx server errors with backoff.
         Never retries on 4xx authentication errors.
         """
+        settings = get_settings()
+        if settings.DEMO_MOCK_FALLBACK and (self.api_key.startswith("gsk_mock") or self.api_key.startswith("mock")):
+            return self._mock_response(messages)
+
         backoffs = [1.0, 3.0]
         last_exception: Optional[Exception] = None
 

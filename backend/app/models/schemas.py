@@ -72,6 +72,14 @@ class ChatResponse(BaseModel):
         default=None,
         description="Informational banner (e.g. when memory is temporarily unavailable).",
     )
+    pipeline_engine: Optional[str] = Field(
+        default="native",
+        description="Execution pipeline engine: 'rocketride' or 'native'.",
+    )
+    graph_context: List[str] = Field(
+        default_factory=list,
+        description="GraphRAG entity relations recalled from HydraDB.",
+    )
 
 
 class ErrorDetail(BaseModel):

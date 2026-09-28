@@ -1,0 +1,78 @@
+services:
+  # PayNest Customer Support Agent Backend & Frontend
+  paynest-app:
+    build: .
+    container_name: paynest_support_app
+    ports:
+      - "8000:8000"
+    environment:
+      - APP_ENV=development
+      - PORT=8000
+      - GROQ_API_KEY=${GROQ_API_KEY:-gsk_placeholder}
+      - GROQ_MODEL=${GROQ_MODEL:-openai/gpt-oss-20b}
+      - SESSION_SECRET=${SESSION_SECRET:-dev-session-secret-change-in-prod-32chars}
+      # Hindsight (vectorize-io/hindsight)
+      - HINDSIGHT_MODE=self_hosted
+      - HINDSIGHT_BASE_URL=http://hindsight:8888
+      - HINDSIGHT_API_KEY=${HINDSIGHT_API_KEY:-local-hindsight-token}
+      - HINDSIGHT_BANK_PREFIX=cs-
+      - HINDSIGHT_SHARED_KB_BANK=support-kb
+      # RocketRide Server (rocketride-org/rocketride-server)
+      - ROCKETRIDE_ENABLED=true
+      - ROCKETRIDE_SERVER_URL=http://rocketride:8080
+      - ROCKETRIDE_PIPELINE_PATH=pipelines/support_agent.pipe
+      # HydraDB Graph Database (hydra-db/hydradb)
+      - HYDRADB_ENABLED=true
+      - HYDRADB_HTTP_URL=http://hydradb:8443
+      - HYDRADB_BOLT_URL=bolt://hydradb:7687
+      - HYDRADB_TOKEN=hydradb-secret-token
+      - HYDRADB_NAMESPACE=paynest-support
+    depends_on:
+      - hindsight
+      - hydradb
+      - rocketride
+    volumes:
+      - ./data:/app/data
+
+  # Vectorize Hindsight - Biomimetic Long-Term Memory Engine
+  # https://github.com/vectorize-io/hindsight
+  hindsight:
+    image: vectorize/hindsight:latest
+    container_name: paynest_hindsight
+    ports:
+      - "8888:8888"
+    environment:
+      - HINDSIGHT_PORT=8888
+      - HINDSIGHT_LOG_LEVEL=info
+    volumes:
+      - hindsight_data:/var/lib/hindsight
+
+  # RocketRide Server - High-Performance C++ AI Pipeline Runtime
+  # https://github.com/rocketride-org/rocketride-server
+  rocketride:
+    image: ghcr.io/rocketride-org/rocketride-server:latest
+    container_name: paynest_rocketride
+    ports:
+      - "8080:8080"
+    environment:
+      - ROCKETRIDE_PORT=8080
+      - GROQ_API_KEY=${GROQ_API_KEY:-gsk_placeholder}
+
+  # HydraDB - Object-Store-Native Distributed Graph Database
+  # https://github.com/hydra-db/hydradb
+  hydradb:
+    image: ghcr.io/hydra-db/hydradb:latest
+    container_name: paynest_hydradb
+    ports:
+      - "7687:7687"
+      - "8443:8443"
+    environment:
+      - GRAPH_ALLOW_PLAINTEXT=true
+      - GRAPH_NAMESPACE=paynest-support
+      - GRAPH_AUTH_TOKEN=hydradb-secret-token
+    volumes:
+      - hydradb_data:/var/lib/hydradb
+
+volumes:
+  hindsight_data:
+  hydradb_data:

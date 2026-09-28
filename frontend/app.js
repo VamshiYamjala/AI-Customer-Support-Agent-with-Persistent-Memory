@@ -44,6 +44,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   let currentSessionId = `sess_${Date.now().toString(36)}`;
   let isSending = false;
   let lastUsedMemories = [];
+  let lastGraphContext = [];
   let currentTab = "used";
 
   const customerMeta = {
@@ -183,6 +184,8 @@ document.addEventListener("DOMContentLoaded", async () => {
       renderHistoryTab();
     } else if (tab === "kb") {
       renderKBTab();
+    } else if (tab === "graph") {
+      renderGraphTab();
     }
   }
 
@@ -334,6 +337,42 @@ document.addEventListener("DOMContentLoaded", async () => {
     });
   }
 
+  function renderGraphTab() {
+    if (!lastGraphContext || lastGraphContext.length === 0) {
+      inspectorBody.innerHTML = `
+        <div class="inspector-empty">
+          <div class="empty-icon">🕸️</div>
+          <p class="empty-title">No Graph Relations Recalled</p>
+          <p class="empty-desc">HydraDB (GraphRAG) maps customer session entities, tickets, topics, and resolution outcomes across sessions.</p>
+        </div>
+      `;
+      return;
+    }
+
+    inspectorBody.innerHTML = `
+      <div style="font-size:0.75rem; font-weight:700; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.5px; margin-bottom:0.5rem;">
+        HydraDB GraphRAG — ${lastGraphContext.length} Relation${lastGraphContext.length > 1 ? "s" : ""}
+      </div>
+    `;
+
+    lastGraphContext.forEach((rel, idx) => {
+      const card = document.createElement("div");
+      card.className = "memory-card";
+      card.innerHTML = `
+        <div class="memory-card-header">
+          <span class="memory-tag-badge" style="background:#fef3c7; color:#92400e; border:1px solid #fde68a;">[G${idx + 1}]</span>
+          <span class="memory-type-badge" style="background:#ede9fe; color:#5b21b6;">Graph Context</span>
+        </div>
+        <div class="memory-card-text">${escapeHtml(rel)}</div>
+        <div class="memory-card-footer">
+          <span>Engine: <code>hydra-db/hydradb</code></span>
+          <span>OpenCypher</span>
+        </div>
+      `;
+      inspectorBody.appendChild(card);
+    });
+  }
+
   // =========================================================================
   // Outcome Recording Feedback
   // =========================================================================
@@ -374,6 +413,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     let formatted = escapeHtml(rawText);
     formatted = formatted.replace(/\[(M\d+)\]/g, '<span class="citation-pill citation-m">[$1]</span>');
     formatted = formatted.replace(/\[(K\d+)\]/g, '<span class="citation-pill citation-k">[$1]</span>');
+    formatted = formatted.replace(/\[(G\d+)\]/g, '<span class="citation-pill citation-g" style="background:#fef3c7; color:#92400e; border:1px solid #fde68a;">[$1]</span>');
     return formatted;
   }
 
@@ -501,6 +541,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 
       // Update inspector state
       lastUsedMemories = data.memories_used || [];
+      lastGraphContext = data.graph_context || [];
       updateMemoryCounts(lastUsedMemories.length);
       renderInspector(currentTab);
 

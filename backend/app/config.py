@@ -31,7 +31,7 @@ class Settings(BaseSettings):
     )
     HINDSIGHT_API_KEY: str = Field(
         ...,
-        description="API Key for Hindsight Cloud",
+        description="API Key for Hindsight (Cloud or self-hosted vectorize-io/hindsight)",
     )
     HINDSIGHT_BANK_PREFIX: str = Field(
         default="cs-",
@@ -40,6 +40,46 @@ class Settings(BaseSettings):
     HINDSIGHT_SHARED_KB_BANK: str = Field(
         default="support-kb",
         description="Shared company knowledge base bank ID",
+    )
+    HINDSIGHT_MODE: str = Field(
+        default="cloud",
+        description="Hindsight deployment mode: 'cloud' or 'self_hosted' (vectorize-io/hindsight)",
+    )
+
+    # RocketRide AI Pipeline Server (https://github.com/rocketride-org/rocketride-server)
+    ROCKETRIDE_ENABLED: bool = Field(
+        default=False,
+        description="Whether to route turns through RocketRide high-performance C++ pipeline engine",
+    )
+    ROCKETRIDE_SERVER_URL: str = Field(
+        default="http://localhost:8080",
+        description="Base URL for RocketRide Server API",
+    )
+    ROCKETRIDE_PIPELINE_PATH: str = Field(
+        default="pipelines/support_agent.pipe",
+        description="Path to RocketRide .pipe workflow definition",
+    )
+
+    # HydraDB Graph Database for GraphRAG (https://github.com/hydra-db/hydradb)
+    HYDRADB_ENABLED: bool = Field(
+        default=False,
+        description="Whether to enable HydraDB GraphRAG context retrieval",
+    )
+    HYDRADB_HTTP_URL: str = Field(
+        default="http://localhost:8443",
+        description="HydraDB HTTPS/HTTP Query API URL",
+    )
+    HYDRADB_BOLT_URL: str = Field(
+        default="bolt://localhost:7687",
+        description="HydraDB Bolt protocol URL",
+    )
+    HYDRADB_TOKEN: Optional[str] = Field(
+        default="hydradb-secret-token",
+        description="HydraDB Bearer token or credentials",
+    )
+    HYDRADB_NAMESPACE: str = Field(
+        default="paynest-support",
+        description="HydraDB graph namespace header",
     )
 
     # LLM (Groq) Configuration
@@ -68,6 +108,10 @@ class Settings(BaseSettings):
     ALLOWED_ORIGINS: str = Field(
         default="http://localhost:8000",
         description="Comma-separated allowed CORS origins",
+    )
+    DEMO_MOCK_FALLBACK: bool = Field(
+        default=True,
+        description="Enable local simulation when mock API keys are configured",
     )
 
     @field_validator("HINDSIGHT_BASE_URL", mode="before")
