@@ -30,17 +30,22 @@ class ChatRequest(BaseModel):
         max_length=2000,
         description="The customer's message text (1-2000 chars).",
     )
-    customer_id: str = Field(
-        default="priya",
-        description="Validated customer identifier (default demo: priya).",
-    )
     session_id: Optional[str] = Field(
         default=None,
         description="Optional session identifier for grouping turns.",
     )
+    client_message_id: Optional[str] = Field(
+        default=None,
+        description="Client-side idempotency identifier.",
+    )
     use_memory: bool = Field(
         default=True,
         description="Flag indicating whether to query persistent memory.",
+    )
+    # Ignored if supplied by client to prevent identity spoofing
+    customer_id: Optional[str] = Field(
+        default=None,
+        description="Ignored. Identity is resolved server-side from bearer token.",
     )
 
     @field_validator("message")
@@ -50,14 +55,6 @@ class ChatRequest(BaseModel):
         if not stripped:
             raise ValueError("Message cannot be empty or contain only whitespace.")
         return stripped
-
-    @field_validator("customer_id")
-    @classmethod
-    def validate_customer_id(cls, v: str) -> str:
-        cleaned = v.strip().lower()
-        if not CUSTOMER_ID_REGEX.match(cleaned):
-            raise ValueError(f"Invalid customer_id '{v}'. Must match ^[a-z0-9-]{{3,40}}$.")
-        return cleaned
 
 
 class ChatResponse(BaseModel):

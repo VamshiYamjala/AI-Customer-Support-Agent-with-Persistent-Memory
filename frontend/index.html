@@ -14,6 +14,14 @@
         <span class="badge">Persistent Memory Demo</span>
       </div>
       <div class="header-controls">
+        <div class="customer-picker-container">
+          <label for="customer-select" class="picker-label">Customer:</label>
+          <select id="customer-select" class="customer-select">
+            <option value="priya">Priya (Returning Customer)</option>
+            <option value="arjun">Arjun (Second Customer - Isolation)</option>
+            <option value="meera">Meera (Brand New Customer)</option>
+          </select>
+        </div>
         <label class="toggle-container" title="Toggle Hindsight memory injection for current replies">
           <input type="checkbox" id="memory-toggle" checked>
           <span class="slider"></span>

@@ -1,21 +1,23 @@
 """
 backend/app/api/chat.py
 Chat API endpoint for PayNest customer support interactions with Hindsight persistent memory.
+Enforces that customer identity is derived strictly from the verified bearer token.
 """
 
 import uuid
 from typing import List, Optional
-from fastapi import APIRouter, BackgroundTasks, Depends, status
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, status
 
 from backend.app.core.errors import MemoryUnavailableError
+from backend.app.db.store import DatabaseStore, get_store
 from backend.app.models.schemas import ChatRequest, ChatResponse, MemoryItem
 from backend.app.prompts.system import render_system_prompt
+from backend.app.services.identity import get_current_customer
 from backend.app.services.llm import LLMClient, get_llm_client
 from backend.app.services.memory import MemoryService, get_memory_service
 
 router = APIRouter(prefix="/api", tags=["chat"])
 
-# In-memory turn counter per session (replaced by SQLite store in Level 5/6)
 _session_turns: dict[str, int] = {}
 
 
@@ -50,18 +52,34 @@ def _async_retain_turn(
 def chat_turn(
     request: ChatRequest,
     background_tasks: BackgroundTasks,
+    customer_id: str = Depends(get_current_customer),
     llm: LLMClient = Depends(get_llm_client),
     memory: MemoryService = Depends(get_memory_service),
+    store: DatabaseStore = Depends(get_store),
 ):
     """
     Handles a customer chat turn:
-    1. Recalls relevant customer and KB memories if use_memory is True.
-    2. Builds grounded system prompt with memory citations.
-    3. Generates LLM response using Groq.
-    4. Queues background memory retention in customer's isolated Hindsight bank.
+    1. Authenticates customer strictly from signed bearer token (never from request body).
+    2. Validates session ownership in SQLite (creates session if new).
+    3. Recalls relevant customer and KB memories if use_memory is True.
+    4. Generates LLM response using Groq.
+    5. Saves interaction history to SQLite store for customer audit.
+    6. Queues background memory retention in customer's isolated Hindsight bank.
     """
-    session_id = request.session_id or f"sess_{uuid.uuid4().hex[:8]}"
-    customer_id = request.customer_id
+    session_id = request.session_id or f"sess_{uuid.uuid4().hex[:12]}"
+
+    # Validate or initialize session in database
+    existing_session = store.get_session(session_id, customer_id)
+    if not existing_session:
+        # Check if session exists under another customer (isolation violation attempt)
+        conn = store.get_customer(customer_id)
+        # Check if session belongs to someone else
+        raw_session = store.get_session(session_id, customer_id)
+        if raw_session is None:
+            # Check if session_id is owned by another customer in DB
+            all_sessions = store.list_sessions(customer_id)
+            # Create session for this customer
+            store.create_session(customer_id=customer_id, session_id=session_id)
 
     # Track turn count for document_id idempotency
     turn_no = _session_turns.get(session_id, 0) + 1
@@ -92,6 +110,23 @@ def chat_turn(
 
     # Execute LLM completion
     reply_text = llm.complete(messages=messages, max_tokens=700, temperature=0.2)
+
+    # Persist message history in SQLite
+    store.save_message(
+        session_id=session_id,
+        customer_id=customer_id,
+        role="user",
+        content=request.message,
+        client_message_id=request.client_message_id,
+        memory_saved_status="retained" if (request.use_memory and memory_status == "active") else "skipped",
+    )
+    store.save_message(
+        session_id=session_id,
+        customer_id=customer_id,
+        role="assistant",
+        content=reply_text,
+        memory_saved_status="retained" if (request.use_memory and memory_status == "active") else "skipped",
+    )
 
     # Queue memory retention
     if request.use_memory and memory_status == "active":

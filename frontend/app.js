@@ -1,9 +1,9 @@
 /**
  * frontend/app.js
- * Vanilla JavaScript controller for PayNest Support Chat UI with Hindsight Memory Inspector.
+ * Vanilla JavaScript controller for PayNest Support Chat UI with Hindsight Memory Inspector and Customer Authentication.
  */
 
-document.addEventListener("DOMContentLoaded", () => {
+document.addEventListener("DOMContentLoaded", async () => {
   const chatInput = document.getElementById("chat-input");
   const sendBtn = document.getElementById("send-btn");
   const messagesContainer = document.getElementById("messages-container");
@@ -12,11 +12,59 @@ document.addEventListener("DOMContentLoaded", () => {
   const memoryStatusChip = document.getElementById("memory-status-chip");
   const inspectorBody = document.getElementById("inspector-body");
   const tabBtns = document.querySelectorAll(".tab-btn");
+  const customerSelect = document.getElementById("customer-select");
+  const customerNameEl = document.getElementById("customer-name");
+  const customerEmailEl = document.getElementById("customer-email");
 
   let currentCustomer = "priya";
+  let authToken = null;
   let currentSessionId = `sess_${Date.now().toString(36)}`;
   let isSending = false;
   let lastUsedMemories = [];
+
+  // Authenticate and obtain signed bearer token
+  async function loginAsCustomer(customerId) {
+    try {
+      const resp = await fetch("/api/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ customer_id: customerId }),
+      });
+      if (resp.ok) {
+        const data = await resp.json();
+        authToken = data.token;
+        currentCustomer = data.customer.id;
+        sessionStorage.setItem("paynest_auth_token", authToken);
+        sessionStorage.setItem("paynest_customer_id", currentCustomer);
+
+        if (customerNameEl) customerNameEl.textContent = data.customer.display_name;
+        if (customerEmailEl) customerEmailEl.textContent = data.customer.email_masked;
+
+        // Reset session on customer switch
+        resetSession(`Logged in as ${data.customer.display_name}.`);
+      }
+    } catch (e) {
+      console.error("Login failed:", e);
+    }
+  }
+
+  function resetSession(welcomeMsg = "Started a new session. How can we help you today?") {
+    currentSessionId = `sess_${Date.now().toString(36)}`;
+    lastUsedMemories = [];
+    messagesContainer.innerHTML = `
+      <div class="message system">
+        <p>${welcomeMsg}</p>
+      </div>
+    `;
+    renderInspector("used");
+  }
+
+  // Customer dropdown change
+  if (customerSelect) {
+    customerSelect.addEventListener("change", (e) => {
+      loginAsCustomer(e.target.value);
+    });
+  }
 
   // Tab switching (Used vs All)
   tabBtns.forEach((btn) => {
@@ -57,7 +105,7 @@ document.addEventListener("DOMContentLoaded", () => {
       // Tab === 'all'
       inspectorBody.innerHTML = `
         <div class="inspector-empty">
-          <p>Displaying all persistent facts stored in bank <code>cs-${currentCustomer}</code>.</p>
+          <p>Displaying persistent memory bank <code>cs-${currentCustomer}</code>.</p>
         </div>
       `;
       if (lastUsedMemories && lastUsedMemories.length > 0) {
@@ -117,6 +165,10 @@ document.addEventListener("DOMContentLoaded", () => {
     const text = chatInput.value.trim();
     if (!text || isSending) return;
 
+    if (!authToken) {
+      await loginAsCustomer(currentCustomer);
+    }
+
     if (text.length > 2000) {
       alert("Message is too long (maximum 2,000 characters).");
       return;
@@ -137,10 +189,10 @@ document.addEventListener("DOMContentLoaded", () => {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
+          "Authorization": `Bearer ${authToken}`,
         },
         body: JSON.stringify({
           message: text,
-          customer_id: currentCustomer,
           session_id: currentSessionId,
           use_memory: useMemory,
         }),
@@ -150,7 +202,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
-        const errMsg = errorData.error?.message || "The assistant is temporarily unavailable. Please try again.";
+        const errMsg = errorData.error?.message || errorData.detail || "The assistant is temporarily unavailable. Please try again.";
         appendMessage("system", `⚠️ ${errMsg}`);
         return;
       }
@@ -207,14 +259,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
   if (newSessionBtn) {
     newSessionBtn.addEventListener("click", () => {
-      currentSessionId = `sess_${Date.now().toString(36)}`;
-      lastUsedMemories = [];
-      messagesContainer.innerHTML = `
-        <div class="message system">
-          <p>Started a new session. How can we help you today?</p>
-        </div>
-      `;
-      renderInspector("used");
+      resetSession("Started a new session. How can we help you today?");
     });
   }
 
@@ -231,4 +276,7 @@ document.addEventListener("DOMContentLoaded", () => {
       }
     });
   }
+
+  // Initial login on page load
+  await loginAsCustomer("priya");
 });

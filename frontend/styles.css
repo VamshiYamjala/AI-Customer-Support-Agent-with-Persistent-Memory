@@ -59,6 +59,33 @@ body {
   font-weight: 600;
 }
 
+.header-controls {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.customer-picker-container {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.picker-label {
+  font-size: 0.85rem;
+  font-weight: 500;
+  color: var(--text-muted);
+}
+
+.customer-select {
+  padding: 0.4rem 0.6rem;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+  font-size: 0.85rem;
+  background: #fff;
+  cursor: pointer;
+}
+
 .main-container {
   display: grid;
   grid-template-columns: 1fr 380px;

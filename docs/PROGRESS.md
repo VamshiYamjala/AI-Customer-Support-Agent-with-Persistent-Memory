@@ -35,7 +35,7 @@
   - [x] Live integration test in `tests/integration/test_chat_live.py` (live Groq reply verified)
   - [x] Full test suite passing (14/14 tests green)
   - [x] User approved Level 3
-- [ ] **Level 4: Hindsight Integration and Memory Lifecycle**
+- [x] **Level 4: Hindsight Integration and Memory Lifecycle**
   - [x] `backend/app/services/sanitize.py`: PII and secret redaction for card numbers, CVVs, passwords, and OTPs
   - [x] `backend/app/services/memory.py`: `MemoryService` wrapping Hindsight Cloud with `bank_id_for`, `ensure_bank`, `recall`, `recall_kb`, `retain_turn`, `retain_outcome`, `list_memories`
   - [x] Per-customer isolated banks (`cs-<customer_id>`) with `all_strict` tag filtering
@@ -45,8 +45,17 @@
   - [x] Frontend memory inspector updated with memory cards and type badges (`[world]`, `[experience]`, `[observation]`)
   - [x] Comprehensive test suites: unit tests in `tests/unit/test_memory.py` and `tests/unit/test_chat_memory.py` (23/23 tests pass)
   - [x] Local HTTP execution verified with live memory status
-  - [ ] User approves Level 5
+  - [x] User approved Level 4
 - [ ] **Level 5: Customer Identity and Strict Isolation**
+  - [x] `backend/app/db/store.py`: SQLite schema (`customers`, `sessions`, `messages`, `tickets`, `outcomes`) and idempotent seeding for 3 demo customers (`priya`, `arjun`, `meera`)
+  - [x] `backend/app/services/identity.py`: Signed tokens with `itsdangerous` `URLSafeTimedSerializer(SESSION_SECRET)`, 12h expiry, and `get_current_customer` dependency
+  - [x] `backend/app/api/auth.py`: `POST /api/login`, `GET /api/me`, `GET /api/customers`
+  - [x] `backend/app/api/sessions.py`: `POST /api/sessions`, `GET /api/sessions`, `GET /api/sessions/{session_id}/messages` with 404 cross-customer enforcement
+  - [x] `backend/app/api/chat.py`: Authenticated customer identity extracted strictly from bearer token; client-supplied `customer_id`/`bank_id` ignored; messages logged to SQLite
+  - [x] `frontend/`: Added customer switcher dropdown in header; automatic demo login and token storage in `sessionStorage`
+  - [x] Comprehensive test suite: `tests/unit/test_identity.py` (4 tests) and `tests/unit/test_isolation.py` (3 tests)
+  - [x] Full test suite: **30/30 tests passing in 5.46s**
+  - [ ] User approves Level 6
 - [ ] **Level 6: Core Support Agent (Memory ON Flow)**
 - [ ] **Level 7: Persistent-Learning Demonstration & Comparison**
 - [ ] **Level 8: Frontend UI and Memory Inspector UX**

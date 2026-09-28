@@ -118,3 +118,36 @@ This document tracks every single action, decision, setup step, and milestone co
   - Unit tests in `tests/unit/test_chat_memory.py` (3 tests): memory ON recall & injection, memory OFF bypass, memory outage graceful fallback banner.
   - Full test suite: **23/23 tests passing in 6.79s**.
 - [x] Verified local HTTP server execution with active memory recall and background retention.
+- [x] Committed Level 4 changes: `feat: implement level 4 hindsight memory service, lifecycle, and customer isolation` and pushed to GitHub `main`.
+
+---
+
+### Level 5: Customer Identity and Strict Isolation (Completed)
+- [x] Implemented `backend/app/db/store.py`:
+  - SQLite database tables: `customers`, `sessions`, `messages`, `tickets`, `outcomes`.
+  - Idempotent seeding on startup for 3 demo customers: `priya` (Priya Sharma), `arjun` (Arjun Patel), and `meera` (Meera Rao).
+  - Session and message access methods with strict `WHERE customer_id = ?` query isolation.
+- [x] Implemented `backend/app/services/identity.py`:
+  - Signed URL-safe timed tokens via `itsdangerous.URLSafeTimedSerializer(SESSION_SECRET)`.
+  - 12-hour expiration window; rejects expired or tampered signatures with HTTP 401.
+  - `get_current_customer` FastAPI dependency: decodes token from `Authorization: Bearer <token>` and verifies existence against SQLite.
+- [x] Implemented authentication endpoints in `backend/app/api/auth.py`:
+  - `POST /api/login` -> issues signed bearer token for demo customers.
+  - `GET /api/me` -> returns authenticated customer profile.
+  - `GET /api/customers` -> provides customer list for frontend selector.
+- [x] Implemented session management in `backend/app/api/sessions.py`:
+  - `POST /api/sessions` -> creates customer-owned session.
+  - `GET /api/sessions` -> returns only the authenticated customer's sessions.
+  - `GET /api/sessions/{session_id}/messages` -> returns message history; raises HTTP 404 if accessed by any other customer.
+- [x] Updated `backend/app/api/chat.py`:
+  - Enforced `customer_id` derived exclusively from verified bearer token (any client-supplied `customer_id` or `bank_id` in request body is rejected/ignored).
+  - Persists chat turns and assistant replies directly to SQLite messages table for audit.
+- [x] Updated Frontend (`frontend/index.html`, `frontend/app.js`, `frontend/styles.css`):
+  - Added customer selector in header allowing seamless switching between Priya, Arjun, and Meera.
+  - Automatic demo login and storage of bearer token in `sessionStorage`.
+  - Passes `Authorization: Bearer <token>` on all API requests.
+- [x] Comprehensive test suites:
+  - `tests/unit/test_identity.py` (4 tests): token creation/verification, signature tampering (401), token expiry (401), missing/malformed auth header (401).
+  - `tests/unit/test_isolation.py` (3 tests): SQLite cross-customer access rejected with 404, request body identity spoofing ignored, MemoryService bank and tag isolation.
+  - Full test suite: **30/30 tests passing in 5.46s**.
+- [x] Verified live HTTP execution: customer switching, token generation, session creation, chat, and cross-customer isolation enforcement.

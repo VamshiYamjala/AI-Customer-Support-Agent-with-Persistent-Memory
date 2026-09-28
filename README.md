@@ -58,17 +58,25 @@ This project solves customer support amnesia by assigning each customer a dedica
 ## API Endpoints
 - `GET /api/health` — Shallow liveness probe.
 - `GET /api/health/deep` — Live connectivity check to Hindsight Cloud and Groq LLM.
-- `POST /api/chat` — Chat with the support assistant with persistent memory:
+- `POST /api/login` — Demo authentication; returns signed bearer token:
   ```bash
-  # Memory ON (default)
-  curl -X POST http://localhost:8000/api/chat \
+  curl -X POST http://localhost:8000/api/login \
     -H "Content-Type: application/json" \
-    -d '{"customer_id": "priya", "message": "My card failed at checkout again", "use_memory": true}'
-
-  # Memory OFF
-  curl -X POST http://localhost:8000/api/chat \
+    -d '{"customer_id": "priya"}'
+  ```
+- `POST /api/sessions` — Create a support session for authenticated customer:
+  ```bash
+  curl -X POST http://localhost:8000/api/sessions \
+    -H "Authorization: Bearer <token>" \
     -H "Content-Type: application/json" \
-    -d '{"customer_id": "priya", "message": "My card failed at checkout again", "use_memory": false}'
+    -d '{"title": "Billing Assistance"}'
+  ```
+- `POST /api/chat` — Chat with persistent memory (server resolves customer from bearer token):
+  ```bash
+  curl -X POST http://localhost:8000/api/chat \
+    -H "Authorization: Bearer <token>" \
+    -H "Content-Type: application/json" \
+    -d '{"message": "My card failed at checkout again", "use_memory": true}'
   ```
 
 ## Running Tests

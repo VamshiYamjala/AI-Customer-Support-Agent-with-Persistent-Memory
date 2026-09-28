@@ -8,10 +8,14 @@ from starlette.testclient import TestClient
 from backend.app.main import app
 
 
+from backend.app.services.identity import create_token
+
+
 @pytest.mark.integration
 def test_live_chat_completion():
     """Verify live POST /api/chat returns real response from configured Groq model."""
-    client = TestClient(app)
+    token = create_token("priya")
+    client = TestClient(app, headers={"Authorization": f"Bearer {token}"})
     response = client.post(
         "/api/chat",
         json={

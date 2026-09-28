@@ -12,6 +12,8 @@ from fastapi.staticfiles import StaticFiles
 from backend.app.config import get_settings
 from backend.app.api.health import router as health_router
 from backend.app.api.chat import router as chat_router
+from backend.app.api.auth import router as auth_router
+from backend.app.api.sessions import router as sessions_router
 from backend.app.core.errors import AppException, app_exception_handler
 
 settings = get_settings()
@@ -36,6 +38,8 @@ app.add_middleware(
 
 # Include API Routers
 app.include_router(health_router)
+app.include_router(auth_router)
+app.include_router(sessions_router)
 app.include_router(chat_router)
 
 # Mount Frontend static directory

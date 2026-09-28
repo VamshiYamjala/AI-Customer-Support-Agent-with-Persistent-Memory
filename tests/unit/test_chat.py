@@ -14,13 +14,15 @@ from backend.app.services.llm import LLMClient
 from backend.app.core.errors import LLMAuthenticationError, LLMUnavailableError
 
 
+from backend.app.services.identity import create_token
 from backend.app.services.llm import LLMClient, get_llm_client
 
 
 @pytest.fixture
 def client():
     app.dependency_overrides.clear()
-    with TestClient(app) as c:
+    token = create_token("priya")
+    with TestClient(app, headers={"Authorization": f"Bearer {token}"}) as c:
         yield c
     app.dependency_overrides.clear()
 

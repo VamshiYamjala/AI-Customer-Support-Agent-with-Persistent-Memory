@@ -27,9 +27,13 @@ def mock_deps():
     app.dependency_overrides.clear()
 
 
+from backend.app.services.identity import create_token
+
+
 @pytest.fixture
 def client(mock_deps):
-    with TestClient(app) as c:
+    token = create_token("priya")
+    with TestClient(app, headers={"Authorization": f"Bearer {token}"}) as c:
         yield c
 
 
