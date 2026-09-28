@@ -253,6 +253,26 @@ This document tracks every single action, decision, setup step, and milestone co
 - [x] Comprehensive Reliability Report (`docs/RELIABILITY_REPORT.md`):
   - Documented full test coverage matrix, security isolation table, fault-tolerance mechanisms, known limitations, and reproducible commands.
 
+---
+
+### Level 10: Deployment on Render Web Service (Prepared & Configured)
+- [x] Production Runtime & Version Specification:
+  - Created `.python-version` specifying Python 3.12.3 to match local development.
+- [x] Infrastructure as Code (`render.yaml`):
+  - Configured Render Blueprint specification defining web service `paynest-support-agent`.
+  - Build command: `pip install -r requirements.txt && python scripts/seed_demo.py --local-only` (guarantees seeded SQLite records for Priya, Arjun, and Meera even on ephemeral instances).
+  - Start command: `uvicorn backend.app.main:app --host 0.0.0.0 --port $PORT`.
+  - Health check path: `/api/health`.
+  - Secure secret declaration: `sync: false` for `HINDSIGHT_API_KEY` and `GROQ_API_KEY`; `generateValue: true` for `SESSION_SECRET`.
+- [x] Production Server & CORS Configuration (`backend/app/main.py`):
+  - Added dynamic port binding supporting Render's `$PORT`.
+  - Dynamic `allow_credentials` negotiation preventing browser CORS errors when wildcard origins are present.
+- [x] Deployment Documentation (`docs/DEPLOYMENT_GUIDE.md`):
+  - Comprehensive guide covering Blueprint deployment, manual web service setup, post-deploy verification steps, and persistent disk configuration.
+- [x] Test Suite:
+  - All **61/61 tests passing** without regression.
+
+
 
 
 

@@ -27,11 +27,14 @@ app = FastAPI(
 # Global Exception Handlers
 app.add_exception_handler(AppException, app_exception_handler)
 
+cors_origins = settings.allowed_origins_list
+allow_credentials = False if "*" in cors_origins else True
+
 # CORS Middleware
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=settings.allowed_origins_list,
-    allow_credentials=True,
+    allow_origins=cors_origins,
+    allow_credentials=allow_credentials,
     allow_methods=["*"],
     allow_headers=["*"],
 )
@@ -46,3 +49,12 @@ app.include_router(chat_router)
 frontend_path = Path(__file__).resolve().parent.parent.parent / "frontend"
 if frontend_path.exists():
     app.mount("/", StaticFiles(directory=str(frontend_path), html=True), name="frontend")
+
+
+if __name__ == "__main__":
+    import os
+    import uvicorn
+
+    port = int(os.environ.get("PORT", 8000))
+    uvicorn.run("backend.app.main:app", host="0.0.0.0", port=port)
+

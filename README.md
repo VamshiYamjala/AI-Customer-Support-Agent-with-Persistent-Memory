@@ -55,6 +55,15 @@ This project solves customer support amnesia by assigning each customer a dedica
    - Health Check: [http://localhost:8000/api/health](http://localhost:8000/api/health)
    - Deep Health Check: [http://localhost:8000/api/health/deep](http://localhost:8000/api/health/deep)
 
+## Render Web Service Deployment
+Deploying to [Render](https://render.com) is automated via the repository's [`render.yaml`](render.yaml) blueprint:
+
+1. Go to **[dashboard.render.com](https://dashboard.render.com)** > **New +** > **Blueprint**.
+2. Connect this GitHub repository: `https://github.com/VamshiYamjala/AI-Customer-Support-Agent-with-Persistent-Memory`.
+3. Enter your private API keys when prompted (`HINDSIGHT_API_KEY` and `GROQ_API_KEY`).
+4. Click **Apply**. Render will automatically build the service, seed SQLite demo records, and launch Uvicorn on `$PORT`.
+5. Full instructions and verification steps: [`docs/DEPLOYMENT_GUIDE.md`](docs/DEPLOYMENT_GUIDE.md).
+
 ## API Endpoints
 - `GET /api/health` — Shallow liveness probe.
 - `GET /api/health/deep` — Live connectivity check to Hindsight Cloud and Groq LLM.

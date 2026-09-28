@@ -80,9 +80,15 @@
   - [x] 17 new boundary, edge-case, and security isolation tests in `tests/unit/test_reliability.py`
   - [x] Full test suite: **61/61 tests passing** across 11 modules in 10.25s
   - [x] Generated comprehensive reliability, security, and fault-tolerance report: `docs/RELIABILITY_REPORT.md`
-- [ ] **Level 10: Deployment (Render Web Service)**
+- [x] **Level 10: Deployment (Render Web Service)**
+  - [x] Created `render.yaml` Blueprint specification with automated build and startup commands
+  - [x] Configured Python 3.12.3 via `.python-version`
+  - [x] Configured dynamic `$PORT` binding and CORS origin negotiation in `backend/app/main.py`
+  - [x] Created step-by-step deployment and verification guide: `docs/DEPLOYMENT_GUIDE.md`
+  - [x] Added Render deployment instructions in `README.md`
 - [ ] **Level 11: Documentation and Deliverables**
 - [ ] **Level 12: Final Testing, Demo Recording, and Submission**
+
 
 
 
