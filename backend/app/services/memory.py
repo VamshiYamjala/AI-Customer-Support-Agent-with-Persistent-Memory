@@ -66,14 +66,20 @@ class MemoryService:
         self._explicit_client = val
 
     def bank_id_for(self, customer_id: str) -> str:
-        """Computes and validates bank ID for a given customer."""
+        """
+        Computes and validates the unique Hindsight bank ID for a given customer.
+        Enforces tenant isolation by partitioning memories per user ID.
+        """
         cleaned_id = customer_id.strip().lower()
         if not CUSTOMER_ID_REGEX.match(cleaned_id):
             raise ValueError(f"Invalid customer ID: '{customer_id}'. Must match ^[a-z0-9-]{{3,40}}$")
         return f"{self.bank_prefix}{cleaned_id}"
 
     def ensure_bank(self, customer_id: str) -> None:
-        """Idempotently ensures the customer's dedicated memory bank exists in Hindsight."""
+        """
+        Idempotently ensures the customer's dedicated memory bank exists in Hindsight.
+        Creates bank with customized customer-support mission and balanced disposition if absent.
+        """
         bank_id = self.bank_id_for(customer_id)
         if bank_id in self._known_banks:
             return
@@ -105,6 +111,7 @@ class MemoryService:
         Recalls memories from customer's isolated bank with strict customer tag filtering.
         Returns list of standardized MemoryItem models.
         """
+        # Ensure the customer bank is initialized before attempting recall
         bank_id = self.bank_id_for(customer_id)
         self.ensure_bank(customer_id)
 

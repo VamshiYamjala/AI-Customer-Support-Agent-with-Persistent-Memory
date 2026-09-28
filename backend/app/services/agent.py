@@ -114,12 +114,12 @@ class AgentService:
         Executes a single conversational support turn.
         Returns (ChatResponse, background_retain_payload).
         """
-        # Ensure session exists in SQLite
+        # Step 1: Ensure session exists in SQLite store for auditing and continuity
         session = self.store.get_session(session_id, customer_id)
         if not session:
             self.store.create_session(customer_id=customer_id, session_id=session_id)
 
-        # Ensure ticket exists for session in SQLite
+        # Step 2: Ensure an associated support ticket exists for this session
         ticket = self.store.get_latest_ticket_for_session(session_id, customer_id)
         if not ticket:
             ticket = self.store.create_ticket(
@@ -128,7 +128,7 @@ class AgentService:
                 topic="Billing & Payments Support",
             )
 
-        # Retrieve recent turn history for prompt and query generation
+        # Step 3: Retrieve recent conversation turns to provide prompt history & recall context
         recent_history = self.store.get_session_messages(session_id, customer_id)
         turn_no = (len(recent_history) // 2) + 1
 
@@ -138,35 +138,38 @@ class AgentService:
         banner: Optional[str] = None
         allowed_citations: Set[str] = set()
 
+        # Step 4: Semantic memory recall from Hindsight (Customer bank + Shared Knowledge Base)
         if use_memory:
             query = build_recall_query(message, recent_history)
             try:
+                # Retrieve isolated customer-specific history and shared company policies
                 recalled_memories = self.memory.recall(customer_id=customer_id, query=query)
                 kb_memories = self.memory.recall_kb(query=query)
                 memory_status = "active"
 
-                # Populate allowed citations
+                # Populate allowed citation identifiers ([M1], [K1], etc.) for post-check verification
                 for idx in range(1, len(recalled_memories) + 1):
                     allowed_citations.add(f"M{idx}")
                 for idx in range(1, len(kb_memories or []) + 1):
                     allowed_citations.add(f"K{idx}")
 
             except MemoryUnavailableError:
+                # Graceful degradation if Hindsight service is unreachable or rate-limited
                 memory_status = "unavailable"
                 banner = "Memory temporarily unavailable — answering without history."
                 recalled_memories = None
                 kb_memories = None
 
-        # Build prompt
+        # Step 5: Render dynamic system prompt with injected verified memories
         system_prompt = render_system_prompt(memories=recalled_memories, kb_memories=kb_memories)
 
-        # Include recent turns in LLM messages
+        # Step 6: Assemble dialogue payload including bounded sliding window of past messages
         messages = [{"role": "system", "content": system_prompt}]
         for turn in recent_history[-6:]:
             messages.append({"role": turn["role"], "content": turn["content"]})
         messages.append({"role": "user", "content": message})
 
-        # LLM generation
+        # Step 7: Invoke Groq LLM completion with conservative temperature for factual accuracy
         raw_reply = self.llm.complete(messages=messages, max_tokens=700, temperature=0.2)
 
         # Post-check honesty guardrails
