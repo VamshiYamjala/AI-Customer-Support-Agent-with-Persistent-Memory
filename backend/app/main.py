@@ -11,6 +11,8 @@ from fastapi.staticfiles import StaticFiles
 
 from backend.app.config import get_settings
 from backend.app.api.health import router as health_router
+from backend.app.api.chat import router as chat_router
+from backend.app.core.errors import AppException, app_exception_handler
 
 settings = get_settings()
 
@@ -19,6 +21,9 @@ app = FastAPI(
     description="Context-aware customer support assistant powered by Hindsight persistent memory and Groq LLMs.",
     version="1.0.0",
 )
+
+# Global Exception Handlers
+app.add_exception_handler(AppException, app_exception_handler)
 
 # CORS Middleware
 app.add_middleware(
@@ -31,6 +36,7 @@ app.add_middleware(
 
 # Include API Routers
 app.include_router(health_router)
+app.include_router(chat_router)
 
 # Mount Frontend static directory
 frontend_path = Path(__file__).resolve().parent.parent.parent / "frontend"

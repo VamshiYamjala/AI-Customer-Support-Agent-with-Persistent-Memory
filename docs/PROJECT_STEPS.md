@@ -56,3 +56,34 @@ This document tracks every single action, decision, setup step, and milestone co
 - [x] Ran test suite: **5/5 tests passed in 3.61s**.
 - [x] Verified local server execution via Uvicorn over HTTP (`http://127.0.0.1:8000`), testing `/api/health`, `/docs`, and `/`.
 
+---
+
+### Level 3: Backend LLM Integration (Chat Without Memory) (Completed)
+- [x] Implemented `backend/app/core/errors.py`:
+  - `LLMUnavailableError` and `LLMAuthenticationError` mapping to HTTP 503.
+  - Global `AppException` handler returning standard JSON `{"error": {"code": "...", "message": "..."}}`.
+  - Zero leakage of raw stack traces, API keys, or provider bodies.
+- [x] Implemented `backend/app/prompts/system.py`:
+  - PayNest support assistant rules and honesty guardrails.
+  - Strict rule preventing agent from falsely claiming account actions or resolutions.
+- [x] Implemented `backend/app/models/schemas.py`:
+  - `ChatRequest`: message length 1-2000 chars, whitespace stripping, rejection of empty messages.
+  - `ChatResponse`: structured response containing reply, session_id, memories_used, memory_status ("off"), and optional banner.
+- [x] Implemented `backend/app/services/llm.py`:
+  - `LLMClient.complete` wrapping Groq `openai/gpt-oss-20b`.
+  - Configured 30s timeout, automatic retry on 429 rate limit or 5xx with exponential backoff (1s, 3s).
+  - Explicit refusal to retry on 401/403 authentication failures.
+- [x] Implemented `backend/app/api/chat.py`:
+  - `POST /api/chat` handling customer turns and returning LLM responses.
+- [x] Updated `backend/app/main.py`:
+  - Registered `chat_router` and global `app_exception_handler`.
+- [x] Connected Frontend in `frontend/app.js` and `frontend/styles.css`:
+  - Interactive chat with typing indicator, dynamic message bubbles, and error toasts.
+  - Memory toggle reflecting active/off status.
+- [x] Test Suite:
+  - Unit tests in `tests/unit/test_chat.py` (8 tests): valid chat, empty input (422), whitespace input (422), oversized input (422), 429 retry success, 401 no-retry 503, timeout 503, system prompt rules.
+  - Integration test in `tests/integration/test_chat_live.py`: live Groq response verified.
+  - Full test suite: **14/14 tests passing in 5.56s**.
+- [x] Verified live HTTP chat via Uvicorn on `http://127.0.0.1:8000/api/chat`.
+
+

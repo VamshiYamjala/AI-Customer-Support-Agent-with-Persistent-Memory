@@ -1,0 +1,58 @@
+"""
+backend/app/models/schemas.py
+Pydantic request and response schemas for chat, memory, and error responses.
+"""
+
+from typing import Any, Dict, List, Optional
+from pydantic import BaseModel, Field, field_validator
+
+
+class ChatRequest(BaseModel):
+    message: str = Field(
+        ...,
+        min_length=1,
+        max_length=2000,
+        description="The customer's message text (1-2000 chars).",
+    )
+    session_id: Optional[str] = Field(
+        default=None,
+        description="Optional session identifier for grouping turns.",
+    )
+    use_memory: bool = Field(
+        default=True,
+        description="Flag indicating whether to query persistent memory (Level 4+).",
+    )
+
+    @field_validator("message")
+    @classmethod
+    def validate_message_not_empty(cls, v: str) -> str:
+        stripped = v.strip()
+        if not stripped:
+            raise ValueError("Message cannot be empty or contain only whitespace.")
+        return stripped
+
+
+class ChatResponse(BaseModel):
+    reply: str = Field(..., description="Assistant reply message.")
+    session_id: Optional[str] = Field(default=None, description="Active session ID.")
+    memories_used: List[Dict[str, Any]] = Field(
+        default_factory=list,
+        description="List of memories recalled and used in this turn.",
+    )
+    memory_status: str = Field(
+        default="off",
+        description="Memory status: 'active', 'off', or 'unavailable'.",
+    )
+    banner: Optional[str] = Field(
+        default=None,
+        description="Informational banner (e.g. when memory is temporarily unavailable).",
+    )
+
+
+class ErrorDetail(BaseModel):
+    code: str
+    message: str
+
+
+class ErrorResponse(BaseModel):
+    error: ErrorDetail

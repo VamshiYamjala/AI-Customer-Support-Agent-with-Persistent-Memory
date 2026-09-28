@@ -36,3 +36,26 @@ This project solves customer support amnesia by assigning each customer a dedica
    - Interactive OpenAPI Docs: [http://localhost:8000/docs](http://localhost:8000/docs)
    - Health Check: [http://localhost:8000/api/health](http://localhost:8000/api/health)
    - Deep Health Check: [http://localhost:8000/api/health/deep](http://localhost:8000/api/health/deep)
+
+## API Endpoints
+- `GET /api/health` — Shallow liveness probe.
+- `GET /api/health/deep` — Live connectivity check to Hindsight Cloud and Groq LLM.
+- `POST /api/chat` — Chat with the support assistant.
+  ```bash
+  curl -X POST http://localhost:8000/api/chat \
+    -H "Content-Type: application/json" \
+    -d '{"message": "How do I update my card on PayNest?", "use_memory": false}'
+  ```
+
+## Running Tests
+```powershell
+# Run unit tests
+pytest -m unit
+
+# Run live integration tests (uses configured keys)
+pytest -m integration
+
+# Run full test suite
+pytest -q
+```
+

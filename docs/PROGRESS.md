@@ -14,7 +14,7 @@
   - [x] Bank auto-create behaviour determined and recorded (explicit creation needed)
   - [x] Isolation smoke test passed (zero leakage across banks)
   - [x] User approved Level 2 & committed
-- [ ] **Level 2: Scaffolding, Config, Health Checks, Local Run**
+- [x] **Level 2: Scaffolding, Config, Health Checks, Local Run**
   - [x] Folder structure scaffolded from Part 7 (`backend/app`, `frontend/`, `tests/`)
   - [x] `backend/app/config.py` with Pydantic Settings, missing var validation, and secret masking in `__repr__`
   - [x] `backend/app/api/health.py` with `/api/health` and `/api/health/deep`
@@ -23,8 +23,18 @@
   - [x] `pytest.ini` with unit and integration markers
   - [x] Unit tests (`tests/unit/test_health.py`) and integration tests (`tests/integration/test_health_deep.py`) pass (5/5 passed)
   - [x] Local run verified over HTTP (FastAPI app, UI, health endpoints, /docs)
-  - [ ] User approves Level 3
+  - [x] User approved Level 2
 - [ ] **Level 3: Backend LLM Integration (Chat Without Memory)**
+  - [x] `backend/app/services/llm.py`: `LLMClient.complete` wrapping Groq `openai/gpt-oss-20b`, 30s timeout, 429/5xx retry backoff, no 4xx retry
+  - [x] `backend/app/models/schemas.py`: Pydantic `ChatRequest` (1-2000 chars, whitespace stripped, non-empty), `ChatResponse`, `ErrorResponse`
+  - [x] `backend/app/core/errors.py`: Custom `LLMUnavailableError`, `LLMAuthenticationError`, clean JSON error handler (never leaks keys or stack traces)
+  - [x] `backend/app/prompts/system.py`: PayNest support system prompt with honesty guardrails (never claims to have refunded/fixed account status)
+  - [x] `backend/app/api/chat.py`: `POST /api/chat` endpoint returning 200 reply (memory OFF path)
+  - [x] `frontend/app.js`: Vanilla JS chat controller connected to `/api/chat` with typing indicator, message history, and error toasts
+  - [x] Unit tests in `tests/unit/test_chat.py` (8 tests: valid message, empty, oversized, whitespace, 429 retry, 401 auth, timeout 503, system prompt rules)
+  - [x] Live integration test in `tests/integration/test_chat_live.py` (live Groq reply verified)
+  - [x] Full test suite passing (14/14 tests green)
+  - [ ] User approves Level 4
 - [ ] **Level 4: Hindsight Integration and Memory Lifecycle**
 - [ ] **Level 5: Customer Identity and Strict Isolation**
 - [ ] **Level 6: Core Support Agent (Memory ON Flow)**
