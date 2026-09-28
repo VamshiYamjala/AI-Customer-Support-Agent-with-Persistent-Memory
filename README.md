@@ -122,13 +122,16 @@ Launch `http://localhost:8000` to access the interactive web interface:
 
 ## Running Tests
 ```powershell
-# Run unit tests (mocked, fast, no external credits consumed)
-pytest -m unit
+# Run unit tests (mocked, fast, zero external credits consumed)
+pytest -m unit -q
 
 # Run live integration tests (connects to live services)
-pytest -m integration
+pytest -m integration -q
 
-# Run full test suite (43 passed)
+# Run full test suite (61 passed)
 pytest -q
 ```
+
+Detailed reliability and security analysis is documented in [`docs/RELIABILITY_REPORT.md`](docs/RELIABILITY_REPORT.md).
+
 
