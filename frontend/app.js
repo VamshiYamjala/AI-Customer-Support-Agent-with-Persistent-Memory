@@ -1,12 +1,17 @@
 /**
  * frontend/app.js
  * Controller for PayNest Customer Support Assistant.
- * Handles customer authentication, persistent memory inspection,
- * side-by-side comparisons, outcome feedback, and responsive layout.
+ * 
+ * Features:
+ * - Customer authentication & tenant-isolated session management
+ * - Real-time conversational interface with memory status indicators
+ * - Side-by-side comparison of agent answers (with vs without persistent memory)
+ * - Interactive memory inspector displaying recalled facts and knowledge base items
+ * - Resolution outcome feedback collection
  */
 
 document.addEventListener("DOMContentLoaded", async () => {
-  // DOM Elements
+  // DOM Elements - Input, messaging, and control buttons
   const chatInput = document.getElementById("chat-input");
   const sendBtn = document.getElementById("send-btn");
   const messagesContainer = document.getElementById("messages-container");
