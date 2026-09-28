@@ -72,3 +72,17 @@ def test_static_index_page_served():
     assert response.status_code == 200
     assert "text/html" in response.headers.get("content-type", "")
     assert "PayNest" in response.text
+
+
+@pytest.mark.unit
+def test_static_assets_served():
+    """Verify static styles.css and app.js are served with 200 OK."""
+    client = TestClient(app)
+    css_resp = client.get("/styles.css")
+    assert css_resp.status_code == 200
+    assert "text/css" in css_resp.headers.get("content-type", "")
+
+    js_resp = client.get("/app.js")
+    assert js_resp.status_code == 200
+    assert "javascript" in js_resp.headers.get("content-type", "")
+

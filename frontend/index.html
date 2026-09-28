@@ -3,88 +3,172 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>PayNest — AI Customer Support Agent with Persistent Memory</title>
+  <title>PayNest Support — AI Customer Support Agent with Persistent Memory</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="styles.css">
 </head>
 <body>
   <div id="app">
+    <!-- Top Navigation Bar -->
     <header class="app-header">
       <div class="header-brand">
-        <h1>PayNest Support</h1>
-        <span class="badge">Persistent Memory Demo</span>
-      </div>
-      <div class="header-controls">
-        <div class="customer-picker-container">
-          <label for="customer-select" class="picker-label">Customer:</label>
-          <select id="customer-select" class="customer-select">
-            <option value="priya">Priya (Returning Customer)</option>
-            <option value="arjun">Arjun (Second Customer - Isolation)</option>
-            <option value="meera">Meera (Brand New Customer)</option>
-          </select>
+        <div class="brand-logo">
+          <span class="logo-icon">💳</span>
         </div>
-        <label class="toggle-container" title="Toggle Hindsight memory injection for current replies">
-          <input type="checkbox" id="memory-toggle" checked>
-          <span class="slider"></span>
-          <span class="label-text">Memory ON</span>
-        </label>
-        <button id="new-session-btn" class="btn secondary">New Session</button>
+        <div class="brand-text">
+          <div class="brand-title-row">
+            <h1>PayNest Support</h1>
+            <span class="badge badge-brand">Hindsight Memory</span>
+          </div>
+          <span class="brand-subtitle">AI Assistant with Persistent Memory</span>
+        </div>
+      </div>
+
+      <div class="header-controls">
+        <!-- Customer Switcher -->
+        <div class="customer-picker-container">
+          <label for="customer-select" class="picker-label">Active Customer:</label>
+          <div class="select-wrapper">
+            <select id="customer-select" class="customer-select" aria-label="Select customer persona">
+              <option value="priya">Priya Sharma (Returning — Pro Renewal Error)</option>
+              <option value="arjun">Arjun Patel (Isolated Bank — Tax Invoices)</option>
+              <option value="meera">Meera Rao (New Customer — Team Pricing)</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- Memory Toggle Switch -->
+        <div class="toggle-wrapper" title="Toggle Hindsight persistent memory retrieval">
+          <label class="toggle-container" for="memory-toggle">
+            <input type="checkbox" id="memory-toggle" checked>
+            <span class="slider"></span>
+            <span class="label-text" id="toggle-label-text">Memory ON</span>
+          </label>
+        </div>
+
+        <!-- Action Buttons -->
+        <button id="new-session-btn" class="btn btn-secondary" title="Start a fresh chat session">
+          <span>🔄</span> New Session
+        </button>
+
+        <button id="toggle-inspector-btn" class="btn btn-ghost inspector-toggle-mobile" title="Toggle Memory Inspector">
+          <span>🧠</span> Inspector <span id="mobile-mem-badge" class="badge-count">0</span>
+        </button>
       </div>
     </header>
 
+    <!-- Main App Layout -->
     <main class="main-container">
-      <!-- Left: Chat Panel -->
+      <!-- Left Column: Support Chat Interface -->
       <section class="chat-panel">
+        <!-- Chat Header Profile Bar -->
         <div class="chat-header">
           <div class="customer-info" id="active-customer">
-            <span class="avatar">👤</span>
-            <div>
-              <strong id="customer-name">Priya (Returning Customer)</strong>
-              <small id="customer-email">p***@example.com</small>
+            <div class="avatar-ring">
+              <span class="avatar-initials" id="customer-avatar">PS</span>
+            </div>
+            <div class="customer-details">
+              <div class="customer-name-row">
+                <strong id="customer-name">Priya Sharma</strong>
+                <span class="customer-tier" id="customer-tier">Pro Subscriber</span>
+              </div>
+              <small id="customer-email" class="customer-email">p****@example.com</small>
             </div>
           </div>
-          <div id="memory-status-chip" class="status-chip ready">Memory: Ready</div>
-        </div>
 
-        <div class="demo-scenarios-bar">
-          <span class="demo-label">Judge Demos:</span>
-          <button class="demo-chip-btn" id="demo-btn-priya-s2" title="Priya Session 2: Test memory of past card failure">
-            ⚡ Priya Session 2
-          </button>
-          <button class="demo-chip-btn" id="demo-btn-compare" title="Run instant side-by-side comparison of Memory ON vs OFF">
-            ⚖️ Compare ON vs OFF
-          </button>
-          <button class="demo-chip-btn" id="demo-btn-arjun" title="Switch to Arjun to prove memory isolation">
-            🔒 Arjun Isolation
-          </button>
-        </div>
-
-        <div class="messages-container" id="messages-container">
-          <div class="message system">
-            <p>Welcome to PayNest Customer Support. How can we help you today?</p>
+          <div class="chat-header-status">
+            <div id="memory-status-chip" class="status-chip status-ready">
+              <span class="status-dot"></span>
+              <span class="status-text">Memory: Active</span>
+            </div>
           </div>
         </div>
 
+        <!-- Judge Demonstration Quick Shortcuts -->
+        <div class="demo-scenarios-bar">
+          <div class="demo-label-group">
+            <span class="demo-icon">⚡</span>
+            <span class="demo-label">Judge Demos:</span>
+          </div>
+          <div class="demo-chips-scroll">
+            <button class="demo-chip-btn" id="demo-btn-priya-s2" title="Priya returns for Session 2: Tests recall of past card failure">
+              ⚡ Priya Session 2 (Card 4242)
+            </button>
+            <button class="demo-chip-btn demo-chip-accent" id="demo-btn-compare" title="Run side-by-side comparison of Memory ON vs OFF">
+              ⚖️ Compare ON vs OFF
+            </button>
+            <button class="demo-chip-btn" id="demo-btn-arjun" title="Switch to Arjun to test customer isolation">
+              🔒 Arjun Isolation Check
+            </button>
+          </div>
+        </div>
+
+        <!-- Chat Stream -->
+        <div class="messages-container" id="messages-container" role="log" aria-live="polite">
+          <div class="message system">
+            <div class="system-icon">ℹ️</div>
+            <p>Welcome to <strong>PayNest Support</strong>. Your conversation is assisted by persistent memory to save you from re-explaining past issues.</p>
+          </div>
+        </div>
+
+        <!-- Input Area -->
         <div class="input-area">
-          <textarea id="chat-input" placeholder="Type your message here..." rows="2"></textarea>
-          <button id="send-btn" class="btn primary">Send</button>
+          <div class="input-wrapper">
+            <textarea
+              id="chat-input"
+              placeholder="Ask about your subscription, invoices, or billing issue..."
+              rows="1"
+              maxlength="2000"
+              aria-label="Customer message input"
+            ></textarea>
+            <div class="input-meta">
+              <span id="char-counter" class="char-counter">0 / 2000</span>
+            </div>
+          </div>
+          <button id="send-btn" class="btn btn-primary" aria-label="Send message">
+            <span>Send</span>
+            <svg class="send-icon" viewBox="0 0 20 20" fill="currentColor" width="16" height="16">
+              <path d="M10.894 2.553a1 1 0 00-1.788 0l-7 14a1 1 0 001.169 1.409l5-1.429A1 1 0 009 15.571V11a1 1 0 112 0v4.571a1 1 0 00.725.962l5 1.428a1 1 0 001.17-1.408l-7-14z"/>
+            </svg>
+          </button>
         </div>
       </section>
 
-      <!-- Right: Memory Inspector Panel -->
-      <aside class="inspector-panel">
-        <div class="inspector-tabs">
-          <button class="tab-btn active" data-tab="used">Memories Used</button>
-          <button class="tab-btn" data-tab="all">All Memories</button>
+      <!-- Right Column: Memory Inspector Panel -->
+      <aside class="inspector-panel" id="inspector-panel">
+        <div class="inspector-header">
+          <div class="inspector-title-row">
+            <h2>Hindsight Memory Inspector</h2>
+            <span class="badge badge-subtle" id="bank-label">cs-priya</span>
+          </div>
+          <p class="inspector-subtitle">Inspect memories recalled from isolated customer banks and company policies.</p>
+        </div>
+
+        <div class="inspector-tabs" role="tablist">
+          <button class="tab-btn active" data-tab="used" role="tab" aria-selected="true">
+            Turn Memories <span id="mem-count-badge" class="badge-count">0</span>
+          </button>
+          <button class="tab-btn" data-tab="history" role="tab" aria-selected="false">
+            Customer History
+          </button>
+          <button class="tab-btn" data-tab="kb" role="tab" aria-selected="false">
+            Company KB (5)
+          </button>
         </div>
 
         <div class="inspector-body" id="inspector-body">
           <div class="inspector-empty">
-            <p>No memories recalled yet. Send a message to inspect persistent memory retrieval.</p>
+            <div class="empty-icon">🧠</div>
+            <p class="empty-title">No Memories Recalled Yet</p>
+            <p class="empty-desc">Send a message or select a <strong>Judge Demo</strong> to inspect semantic retrieval from Hindsight Cloud.</p>
           </div>
         </div>
       </aside>
     </main>
   </div>
+
   <script src="app.js"></script>
 </body>
 </html>
