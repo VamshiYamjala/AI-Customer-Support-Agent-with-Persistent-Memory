@@ -1,6 +1,6 @@
 /**
  * frontend/app.js
- * Vanilla JavaScript controller for PayNest Support Chat UI.
+ * Vanilla JavaScript controller for PayNest Support Chat UI with Hindsight Memory Inspector.
  */
 
 document.addEventListener("DOMContentLoaded", () => {
@@ -11,9 +11,75 @@ document.addEventListener("DOMContentLoaded", () => {
   const newSessionBtn = document.getElementById("new-session-btn");
   const memoryStatusChip = document.getElementById("memory-status-chip");
   const inspectorBody = document.getElementById("inspector-body");
+  const tabBtns = document.querySelectorAll(".tab-btn");
 
+  let currentCustomer = "priya";
   let currentSessionId = `sess_${Date.now().toString(36)}`;
   let isSending = false;
+  let lastUsedMemories = [];
+
+  // Tab switching (Used vs All)
+  tabBtns.forEach((btn) => {
+    btn.addEventListener("click", () => {
+      tabBtns.forEach((b) => b.classList.remove("active"));
+      btn.classList.add("active");
+      const tab = btn.dataset.tab;
+      renderInspector(tab);
+    });
+  });
+
+  function renderInspector(tab = "used") {
+    if (tab === "used") {
+      if (!lastUsedMemories || lastUsedMemories.length === 0) {
+        inspectorBody.innerHTML = `
+          <div class="inspector-empty">
+            <p>No memories used in this reply.</p>
+          </div>
+        `;
+        return;
+      }
+
+      inspectorBody.innerHTML = "";
+      lastUsedMemories.forEach((mem, idx) => {
+        const card = document.createElement("div");
+        card.className = "memory-card";
+        const typeClass = mem.type === "world" ? "badge-world" : (mem.type === "observation" ? "badge-obs" : "badge-exp");
+        card.innerHTML = `
+          <div class="memory-card-header">
+            <span class="memory-tag">[M${idx + 1}]</span>
+            <span class="badge ${typeClass}">${mem.type || "memory"}</span>
+          </div>
+          <div class="memory-card-text">${escapeHtml(mem.text)}</div>
+        `;
+        inspectorBody.appendChild(card);
+      });
+    } else {
+      // Tab === 'all'
+      inspectorBody.innerHTML = `
+        <div class="inspector-empty">
+          <p>Displaying all persistent facts stored in bank <code>cs-${currentCustomer}</code>.</p>
+        </div>
+      `;
+      if (lastUsedMemories && lastUsedMemories.length > 0) {
+        lastUsedMemories.forEach((mem) => {
+          const card = document.createElement("div");
+          card.className = "memory-card";
+          card.innerHTML = `
+            <div class="memory-card-header">
+              <span class="badge badge-exp">${mem.type}</span>
+            </div>
+            <div class="memory-card-text">${escapeHtml(mem.text)}</div>
+          `;
+          inspectorBody.appendChild(card);
+        });
+      }
+    }
+  }
+
+  function escapeHtml(str) {
+    if (!str) return "";
+    return str.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+  }
 
   // Append a message to the chat view
   function appendMessage(role, text) {
@@ -51,7 +117,6 @@ document.addEventListener("DOMContentLoaded", () => {
     const text = chatInput.value.trim();
     if (!text || isSending) return;
 
-    // Check message length
     if (text.length > 2000) {
       alert("Message is too long (maximum 2,000 characters).");
       return;
@@ -65,6 +130,8 @@ document.addEventListener("DOMContentLoaded", () => {
     chatInput.disabled = true;
     showTypingIndicator();
 
+    const useMemory = memoryToggle ? memoryToggle.checked : true;
+
     try {
       const response = await fetch("/api/chat", {
         method: "POST",
@@ -73,8 +140,9 @@ document.addEventListener("DOMContentLoaded", () => {
         },
         body: JSON.stringify({
           message: text,
+          customer_id: currentCustomer,
           session_id: currentSessionId,
-          use_memory: memoryToggle ? memoryToggle.checked : false,
+          use_memory: useMemory,
         }),
       });
 
@@ -90,21 +158,26 @@ document.addEventListener("DOMContentLoaded", () => {
       const data = await response.json();
       appendMessage("assistant", data.reply);
 
+      if (data.banner) {
+        appendMessage("system", `ℹ️ ${data.banner}`);
+      }
+
       // Update Inspector panel
-      if (data.memories_used && data.memories_used.length > 0) {
-        inspectorBody.innerHTML = "";
-        data.memories_used.forEach((mem) => {
-          const card = document.createElement("div");
-          card.className = "memory-card";
-          card.innerHTML = `<strong>[${mem.id || "Fact"}]</strong> ${mem.text}`;
-          inspectorBody.appendChild(card);
-        });
-      } else {
-        inspectorBody.innerHTML = `
-          <div class="inspector-empty">
-            <p>No memories used in this reply (Memory ${data.memory_status.toUpperCase()}).</p>
-          </div>
-        `;
+      lastUsedMemories = data.memories_used || [];
+      renderInspector("used");
+
+      // Update chip
+      if (memoryStatusChip) {
+        if (data.memory_status === "active") {
+          memoryStatusChip.textContent = "Memory: Saved ✓";
+          memoryStatusChip.className = "status-chip ready";
+        } else if (data.memory_status === "unavailable") {
+          memoryStatusChip.textContent = "Memory: Unavailable";
+          memoryStatusChip.className = "status-chip disabled";
+        } else {
+          memoryStatusChip.textContent = "Memory: OFF";
+          memoryStatusChip.className = "status-chip disabled";
+        }
       }
 
       if (data.session_id) {
@@ -135,16 +208,13 @@ document.addEventListener("DOMContentLoaded", () => {
   if (newSessionBtn) {
     newSessionBtn.addEventListener("click", () => {
       currentSessionId = `sess_${Date.now().toString(36)}`;
+      lastUsedMemories = [];
       messagesContainer.innerHTML = `
         <div class="message system">
           <p>Started a new session. How can we help you today?</p>
         </div>
       `;
-      inspectorBody.innerHTML = `
-        <div class="inspector-empty">
-          <p>No memories recalled yet. Send a message to inspect persistent memory retrieval.</p>
-        </div>
-      `;
+      renderInspector("used");
     });
   }
 

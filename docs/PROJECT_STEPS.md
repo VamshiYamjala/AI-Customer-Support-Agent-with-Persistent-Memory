@@ -85,5 +85,36 @@ This document tracks every single action, decision, setup step, and milestone co
   - Integration test in `tests/integration/test_chat_live.py`: live Groq response verified.
   - Full test suite: **14/14 tests passing in 5.56s**.
 - [x] Verified live HTTP chat via Uvicorn on `http://127.0.0.1:8000/api/chat`.
+- [x] Committed Level 3 changes: `feat: implement level 3 backend llm chat integration, schemas, and frontend controller` and pushed to GitHub `main`.
 
+---
 
+### Level 4: Hindsight Integration and Memory Lifecycle (Completed)
+- [x] Implemented `backend/app/services/sanitize.py`:
+  - Regex-based PII redaction masking 13–19 digit credit cards to `****-****-****-XXXX`.
+  - Redaction of CVVs, one-time passwords (OTPs), and plain-text passwords before storing in memory.
+- [x] Implemented `backend/app/services/memory.py`:
+  - Sole module in the backend importing `hindsight_client`.
+  - `MemoryService.bank_id_for(customer_id)`: validates customer ID and prefixes with `cs-`.
+  - `MemoryService.ensure_bank(customer_id)`: creates dedicated bank with verified mission and disposition if not already present.
+  - `MemoryService.retain_turn(...)`: formats transcript, redacts PII, tags customer, and uses idempotent `document_id=f"{session_id}-t{turn_no}"`.
+  - `MemoryService.retain_outcome(...)`: records customer outcome ("That worked" / "Still broken") on support recommendations.
+  - `MemoryService.recall(...)`: queries customer bank with `tags_match="all_strict"` ensuring defense-in-depth isolation.
+  - `MemoryService.recall_kb(...)`: queries shared company knowledge bank `support-kb`.
+  - `MemoryService.list_memories(...)`: retrieves memory items for the inspector panel.
+  - Exception wrapping: safely maps client errors to `MemoryUnavailableError`.
+- [x] Updated `backend/app/prompts/system.py`:
+  - Renders recalled memories into `<memories>` block with citations `[M1]`, `[M2]` or fallback `CUSTOMER HISTORY: No relevant history found.`.
+  - Renders shared knowledge into `<kb>` block with citations `[K1]`.
+- [x] Integrated `MemoryService` into `backend/app/api/chat.py`:
+  - When `use_memory=True`: queries customer and KB memories, injects into prompt, schedules background turn retention via `BackgroundTasks`.
+  - When `use_memory=False`: bypasses recall, runs in standard direct LLM mode.
+  - Graceful outage fallback: if Hindsight is unreachable, returns warning banner `"Memory temporarily unavailable — answering without history."` while still providing conversational assistance.
+- [x] Updated Frontend (`frontend/app.js` & `frontend/styles.css`):
+  - Inspector renders memory cards with type badges (`[world]`, `[experience]`, `[observation]`), memory tags `[M1]`, and text.
+  - Real-time status chip reflects `"Memory: Saved ✓"`, `"Memory: OFF"`, or `"Memory: Unavailable"`.
+- [x] Test Suite:
+  - Unit tests in `tests/unit/test_memory.py` (6 tests): bank ID validation, idempotent creation, PII redaction before retain, recall mapping & tag scoping, outage handling, customer isolation.
+  - Unit tests in `tests/unit/test_chat_memory.py` (3 tests): memory ON recall & injection, memory OFF bypass, memory outage graceful fallback banner.
+  - Full test suite: **23/23 tests passing in 6.79s**.
+- [x] Verified local HTTP server execution with active memory recall and background retention.

@@ -24,7 +24,7 @@
   - [x] Unit tests (`tests/unit/test_health.py`) and integration tests (`tests/integration/test_health_deep.py`) pass (5/5 passed)
   - [x] Local run verified over HTTP (FastAPI app, UI, health endpoints, /docs)
   - [x] User approved Level 2
-- [ ] **Level 3: Backend LLM Integration (Chat Without Memory)**
+- [x] **Level 3: Backend LLM Integration (Chat Without Memory)**
   - [x] `backend/app/services/llm.py`: `LLMClient.complete` wrapping Groq `openai/gpt-oss-20b`, 30s timeout, 429/5xx retry backoff, no 4xx retry
   - [x] `backend/app/models/schemas.py`: Pydantic `ChatRequest` (1-2000 chars, whitespace stripped, non-empty), `ChatResponse`, `ErrorResponse`
   - [x] `backend/app/core/errors.py`: Custom `LLMUnavailableError`, `LLMAuthenticationError`, clean JSON error handler (never leaks keys or stack traces)
@@ -34,8 +34,18 @@
   - [x] Unit tests in `tests/unit/test_chat.py` (8 tests: valid message, empty, oversized, whitespace, 429 retry, 401 auth, timeout 503, system prompt rules)
   - [x] Live integration test in `tests/integration/test_chat_live.py` (live Groq reply verified)
   - [x] Full test suite passing (14/14 tests green)
-  - [ ] User approves Level 4
+  - [x] User approved Level 3
 - [ ] **Level 4: Hindsight Integration and Memory Lifecycle**
+  - [x] `backend/app/services/sanitize.py`: PII and secret redaction for card numbers, CVVs, passwords, and OTPs
+  - [x] `backend/app/services/memory.py`: `MemoryService` wrapping Hindsight Cloud with `bank_id_for`, `ensure_bank`, `recall`, `recall_kb`, `retain_turn`, `retain_outcome`, `list_memories`
+  - [x] Per-customer isolated banks (`cs-<customer_id>`) with `all_strict` tag filtering
+  - [x] Background asynchronous memory retention via FastAPI `BackgroundTasks`
+  - [x] Honest prompt template injecting `<memories>` or explicit `No relevant history found.`
+  - [x] Graceful fallback on Hindsight outage with user-facing banner ("Memory temporarily unavailable")
+  - [x] Frontend memory inspector updated with memory cards and type badges (`[world]`, `[experience]`, `[observation]`)
+  - [x] Comprehensive test suites: unit tests in `tests/unit/test_memory.py` and `tests/unit/test_chat_memory.py` (23/23 tests pass)
+  - [x] Local HTTP execution verified with live memory status
+  - [ ] User approves Level 5
 - [ ] **Level 5: Customer Identity and Strict Isolation**
 - [ ] **Level 6: Core Support Agent (Memory ON Flow)**
 - [ ] **Level 7: Persistent-Learning Demonstration & Comparison**
